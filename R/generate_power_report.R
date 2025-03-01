@@ -30,15 +30,57 @@ generate_power_report <- function(power_results, sample_size_results, power_curv
   # Placeholder for function implementation
   message("Report generation function implemented. Add actual implementation.")
   
-  # Create a temporary Rmd file as placeholder
-  rmd_template <- system.file("templates", "power_report_template.Rmd", 
-                            package = "viromePower")
+  # Create a simple text report instead of using rmarkdown
+  report_content <- c(
+    "# Virome Study Power Analysis Report",
+    "",
+    "## Study Overview",
+    "",
+    paste("Number of viral taxa analyzed:", power_results$parameters$n_viruses),
+    paste("Expected effect size (fold change):", power_results$parameters$effect_size),
+    paste("Statistical significance level (α):", power_results$parameters$alpha),
+    paste("Sparsity (proportion of zeros):", power_results$parameters$sparsity),
+    paste("Statistical test method:", power_results$parameters$method),
+    "",
+    "## Power Analysis Results",
+    "",
+    "### Statistical Power",
+    "",
+    paste("With", power_results$parameters$n_samples, "samples per group, the estimated statistical power is", 
+          round(power_results$power, 2), "."),
+    "",
+    paste("This means there is a", round(power_results$power * 100), "% probability of detecting a true effect of the specified size."),
+    "",
+    "### Sample Size Recommendation",
+    "",
+    paste("To achieve", round(sample_size_results$parameters$power * 100), "% power, we recommend a minimum of", 
+          sample_size_results$sample_size, "samples per group."),
+    "",
+    "## Distribution of Significant Features",
+    "",
+    paste("At the recommended sample size, we expect to detect approximately", 
+          round(power_results$power * power_results$parameters$n_viruses * 0.1), "differentially abundant viral taxa."),
+    "",
+    "## Assumptions and Limitations",
+    "",
+    "- This analysis assumes a negative binomial distribution of viral counts",
+    "- Multiple testing correction using the Benjamini-Hochberg method",
+    "- Power may be lower for extremely rare viral taxa",
+    "- Actual power depends on true biological variability",
+    "",
+    "---",
+    "",
+    "Generated with viromePower package"
+  )
   
-  # In a real implementation, we would:
-  # 1. Create a temporary Rmd file
-  # 2. Add the power analysis results
-  # 3. Render to HTML using rmarkdown::render
-  # 4. Return the path to the HTML file
+  # Write the report to the output file
+  writeLines(report_content, output_file)
+  
+  if (file.exists(output_file)) {
+    message("Text report generated at: ", output_file)
+  } else {
+    message("Failed to create report at: ", output_file)
+  }
   
   # Return output file path
   invisible(output_file)

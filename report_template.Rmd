@@ -1,0 +1,25 @@
+---
+title: "Sample Power Analysis Report"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## Power Analysis Results
+
+This is a sample report for a virome power analysis.
+
+- Number of samples: 10
+- Effect size: 1.5
+- Number of viruses: 100
+
+## Power Calculation
+
+The estimated power is 0.84 (84%).
+
+## Sample Size Recommendation
+
+To achieve 80% power, we recommend a minimum of 24 samples per group.
