@@ -389,6 +389,23 @@ print(paste("ZINB Bayesian power:", round(zinb_power$power * 100, 1), "%"))
 print(paste("Structural zeros:", round(zinb_power$zero_inflation_summary$structural_zeros_proportion * 100, 1), "%"))
 print(paste("Sampling zeros:", round(zinb_power$zero_inflation_summary$sampling_zeros_proportion * 100, 1), "%"))
 print(paste("Total sparsity:", round(zinb_power$zero_inflation_summary$observed_sparsity * 100, 1), "%"))
+
+# Generate comprehensive report for zero-inflated model analysis
+# with specialized visualizations and diagnostics
+zinb_report <- generate_zero_inflated_power_report(
+  zinb_power_results = zinb_power,
+  output_file = "zero_inflated_power_report.html",
+  title = "Zero-Inflated Virome Power Analysis",
+  target_power = 0.8  # Target 80% power for sample size recommendation
+)
+
+# Report includes:
+# - Zero-inflation pattern visualization (structural vs sampling zeros)
+# - Model comparison between standard and zero-inflated approaches
+# - Power curves accounting for both zero types
+# - Sample size recommendations that prevent underpowered designs
+# - Discovery rate analysis with expected true/false positives
+# - Decision tools for appropriate model selection
 ```
 
 Zero-inflated Bayesian analysis provides several critical advantages for virome studies:
