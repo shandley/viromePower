@@ -63,16 +63,19 @@ power_result <- calc_virome_power(
   n_sim = 100               # Number of simulations
 )
 
-# Safely print power and false discovery rate
+# Print power and false discovery rate 
 power_percent <- round(power_result$power * 100, 1)
 print(paste("Power:", power_percent, "%"))
 
-# Check if FDR is properly calculated (not NA)
-if (!is.na(power_result$fdr)) {
-  fdr_percent <- round(power_result$fdr * 100, 1)
-  print(paste("False discovery rate:", fdr_percent, "%"))
+# The FDR can be zero if no false positives are detected
+# (which is good but looks strange in output)
+fdr_percent <- round(power_result$fdr * 100, 1)
+if (fdr_percent == 0 && power_result$avg_detected > 0) {
+  print("False discovery rate: 0% (perfect precision)")
+} else if (is.na(power_result$fdr) || power_result$avg_detected == 0) {
+  print("False discovery rate: Not calculable (no features detected)")
 } else {
-  print("False discovery rate: Not calculable (no differential features detected)")
+  print(paste("False discovery rate:", fdr_percent, "%"))
 }
 
 # 4. Plot power curve with smoothing

@@ -86,6 +86,27 @@ generate_power_report <- function(power_results, sample_size_results, power_curv
       plot_base64 <- NULL
       message("ggplot2 package is needed for creating plots")
     }
+  } else {
+    # Handle the case when power_curve is provided
+    if (requireNamespace("ggplot2", quietly = TRUE)) {
+      # Save the provided power curve to a temporary file
+      plot_file <- tempfile(fileext = ".png")
+      ggplot2::ggsave(plot_file, power_curve, width = 8, height = 5, dpi = 100)
+      
+      # Read the image as binary and convert to base64
+      if (requireNamespace("base64enc", quietly = TRUE)) {
+        plot_data <- readBin(plot_file, "raw", file.info(plot_file)$size)
+        plot_base64 <- base64enc::base64encode(plot_data)
+        unlink(plot_file)  # Remove temp file
+      } else {
+        # Fallback if base64enc is not available
+        plot_base64 <- NULL
+        message("base64enc package is needed for embedded plots")
+      }
+    } else {
+      plot_base64 <- NULL
+      message("ggplot2 package is needed for creating plots")
+    }
   }
   
   # Generate a features pie chart
