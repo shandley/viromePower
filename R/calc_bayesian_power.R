@@ -186,28 +186,57 @@ calc_bayesian_power <- function(n_samples,
   true_negatives <- sapply(simulation_results, function(x) length(x$true_negatives))
   false_negatives <- sapply(simulation_results, function(x) length(x$false_negatives))
   
-  # Calculate power metrics
-  power <- mean(true_positives / n_true_effects)
-  expected_discoveries <- mean(true_positives + false_positives)
-  false_discovery_proportion <- mean(false_positives / pmax(true_positives + false_positives, 1))
+  # Calculate power metrics with safety checks
+  # Avoid division by zero
+  if (n_true_effects == 0) {
+    power <- 0
+  } else {
+    power <- mean(true_positives / n_true_effects, na.rm = TRUE)
+  }
+  
+  expected_discoveries <- mean(true_positives + false_positives, na.rm = TRUE)
+  
+  # Calculate false discovery proportion safely
+  fdp_values <- numeric(length(true_positives))
+  for (i in 1:length(true_positives)) {
+    total_positives <- true_positives[i] + false_positives[i]
+    if (total_positives == 0) {
+      fdp_values[i] <- 0  # No discoveries means no false discoveries
+    } else {
+      fdp_values[i] <- false_positives[i] / total_positives
+    }
+  }
+  false_discovery_proportion <- mean(fdp_values, na.rm = TRUE)
   
   # Extract Bayes factors and posterior probabilities for summary
   bayes_factors <- unlist(lapply(simulation_results, function(x) x$bayes_factors))
   posterior_probs <- unlist(lapply(simulation_results, function(x) x$posterior_probs))
   
   # Summarize Bayes factors and posterior probabilities
+  # Handle potential NAs or Inf values
+  bayes_factors <- bayes_factors[is.finite(bayes_factors)]
+  posterior_probs <- posterior_probs[is.finite(posterior_probs)]
+  
+  # If no valid values remain, provide default values
+  if (length(bayes_factors) == 0) {
+    bayes_factors <- c(1) # Neutral Bayes factor
+  }
+  if (length(posterior_probs) == 0) {
+    posterior_probs <- c(0.5) # Neutral posterior probability
+  }
+  
   bayes_factor_summary <- list(
-    mean = mean(bayes_factors),
-    median = median(bayes_factors),
-    q25 = quantile(bayes_factors, 0.25),
-    q75 = quantile(bayes_factors, 0.75)
+    mean = mean(bayes_factors, na.rm = TRUE),
+    median = median(bayes_factors, na.rm = TRUE),
+    q25 = quantile(bayes_factors, 0.25, na.rm = TRUE),
+    q75 = quantile(bayes_factors, 0.75, na.rm = TRUE)
   )
   
   posterior_prob_summary <- list(
-    mean = mean(posterior_probs),
-    median = median(posterior_probs),
-    q25 = quantile(posterior_probs, 0.25),
-    q75 = quantile(posterior_probs, 0.75)
+    mean = mean(posterior_probs, na.rm = TRUE),
+    median = median(posterior_probs, na.rm = TRUE),
+    q25 = quantile(posterior_probs, 0.25, na.rm = TRUE),
+    q75 = quantile(posterior_probs, 0.75, na.rm = TRUE)
   )
   
   # Create summary of simulation results
@@ -257,8 +286,23 @@ analyze_bayesian <- function(counts, groups, prior_strength, credible_interval) 
   
   # Split data by group
   group_indices <- split(1:length(groups), groups)
-  counts_g1 <- counts[, group_indices[[1]], drop = FALSE]
-  counts_g2 <- counts[, group_indices[[2]], drop = FALSE]
+  
+  # Ensure there are exactly 2 groups
+  if (length(group_indices) != 2) {
+    warning("Expected exactly 2 groups, but found ", length(group_indices))
+    # Add placeholder empty group if needed
+    if (length(group_indices) < 2) {
+      missing_groups <- setdiff(c("A", "B"), names(group_indices))
+      for (g in missing_groups) {
+        group_indices[[g]] <- integer(0)
+      }
+    }
+  }
+  
+  # Use the first two groups only
+  group_names <- names(group_indices)[1:2]
+  counts_g1 <- counts[, group_indices[[group_names[1]]], drop = FALSE]
+  counts_g2 <- counts[, group_indices[[group_names[2]]], drop = FALSE]
   
   # For each virus, perform Bayesian analysis
   for (i in 1:n_viruses) {
@@ -269,26 +313,77 @@ analyze_bayesian <- function(counts, groups, prior_strength, credible_interval) 
     # Calculate summary statistics
     n1 <- length(y1)
     n2 <- length(y2)
+    
+    # Skip if either group has no samples
+    if (n1 == 0 || n2 == 0) {
+      bayes_factors[i] <- NA
+      posterior_probs[i] <- NA
+      effect_sizes[i] <- NA
+      credible_intervals[i, ] <- c(NA, NA)
+      next
+    }
+    
     sum_y1 <- sum(y1)
     sum_y2 <- sum(y2)
+    
+    # Handle extreme cases to prevent numerical issues
+    if (sum_y1 == 0 && sum_y2 == 0) {
+      # No signal at all, use neutral values
+      bayes_factors[i] <- 1
+      posterior_probs[i] <- 0.5
+      effect_sizes[i] <- 1
+      credible_intervals[i, ] <- c(0.5, 2)
+      next
+    }
     
     # Add prior pseudocounts (Dirichlet-multinomial model)
     alpha1 <- sum_y1 + prior_strength
     alpha2 <- sum_y2 + prior_strength
     
     # Calculate posterior for null hypothesis (no difference)
-    log_prob_null <- lbeta(sum_y1 + sum_y2 + 2 * prior_strength, 
-                          n1 + n2 - sum_y1 - sum_y2 + 2 * prior_strength) -
-                     lbeta(2 * prior_strength, 2 * prior_strength)
+    log_prob_null <- tryCatch({
+      lbeta(sum_y1 + sum_y2 + 2 * prior_strength, 
+            n1 + n2 - sum_y1 - sum_y2 + 2 * prior_strength) -
+        lbeta(2 * prior_strength, 2 * prior_strength)
+    }, error = function(e) {
+      # Handle numerical errors
+      warning("Numerical error in log_prob_null calculation")
+      return(0)
+    })
     
     # Calculate posterior for alternative hypothesis (difference exists)
-    log_prob_alt <- lbeta(sum_y1 + prior_strength, n1 - sum_y1 + prior_strength) +
-                   lbeta(sum_y2 + prior_strength, n2 - sum_y2 + prior_strength) -
-                   lbeta(prior_strength, prior_strength) -
-                   lbeta(prior_strength, prior_strength)
+    log_prob_alt <- tryCatch({
+      lbeta(sum_y1 + prior_strength, n1 - sum_y1 + prior_strength) +
+        lbeta(sum_y2 + prior_strength, n2 - sum_y2 + prior_strength) -
+        lbeta(prior_strength, prior_strength) -
+        lbeta(prior_strength, prior_strength)
+    }, error = function(e) {
+      # Handle numerical errors
+      warning("Numerical error in log_prob_alt calculation")
+      return(0)
+    })
     
     # Calculate Bayes factor (exp to convert from log scale)
-    bf <- exp(log_prob_alt - log_prob_null)
+    # Handle potential numerical issues
+    if (is.finite(log_prob_alt) && is.finite(log_prob_null) && 
+        !is.na(log_prob_alt) && !is.na(log_prob_null)) {
+      bf <- tryCatch({
+        exp(log_prob_alt - log_prob_null)
+      }, error = function(e) {
+        # Handle overflow
+        if (log_prob_alt > log_prob_null) {
+          return(1000) # Cap at a high value
+        } else {
+          return(0.001) # Cap at a low value
+        }
+      })
+    } else {
+      # Use neutral value if calculation failed
+      bf <- 1
+    }
+    
+    # Cap extremely large values
+    bf <- min(bf, 1e6)
     bayes_factors[i] <- bf
     
     # Calculate posterior probability of alternative hypothesis
@@ -299,7 +394,12 @@ analyze_bayesian <- function(counts, groups, prior_strength, credible_interval) 
     # Add small pseudocount to avoid division by zero
     mean1 <- (sum_y1 + prior_strength) / (n1 + 2 * prior_strength)
     mean2 <- (sum_y2 + prior_strength) / (n2 + 2 * prior_strength)
-    effect_sizes[i] <- mean2 / max(mean1, 1e-6)
+    
+    # Handle zero or negative values
+    if (mean1 <= 0) mean1 <- 1e-6
+    if (mean2 <= 0) mean2 <- 1e-6
+    
+    effect_sizes[i] <- mean2 / mean1
     
     # Calculate credible interval for effect size using beta distribution properties
     # This is a simplification; for real implementation, consider MCMC
@@ -313,11 +413,24 @@ analyze_bayesian <- function(counts, groups, prior_strength, credible_interval) 
     lower_quantile <- (1 - credible_interval) / 2
     upper_quantile <- 1 - lower_quantile
     
-    # Approximate credible interval for effect size
-    ci_lower <- qbeta(lower_quantile, alpha2_post, beta2_post) / 
-               qbeta(upper_quantile, alpha1_post, beta1_post)
-    ci_upper <- qbeta(upper_quantile, alpha2_post, beta2_post) / 
-               qbeta(lower_quantile, alpha1_post, beta1_post)
+    # Approximate credible interval for effect size - with error handling
+    ci_lower <- tryCatch({
+      qbeta(lower_quantile, alpha2_post, beta2_post) / 
+        qbeta(upper_quantile, alpha1_post, beta1_post)
+    }, error = function(e) {
+      return(effect_sizes[i] * 0.5) # Fallback to 50% of effect size
+    })
+    
+    ci_upper <- tryCatch({
+      qbeta(upper_quantile, alpha2_post, beta2_post) / 
+        qbeta(lower_quantile, alpha1_post, beta1_post)
+    }, error = function(e) {
+      return(effect_sizes[i] * 2.0) # Fallback to 200% of effect size
+    })
+    
+    # Handle extreme values
+    if (!is.finite(ci_lower) || ci_lower <= 0) ci_lower <- effect_sizes[i] * 0.5
+    if (!is.finite(ci_upper) || ci_upper <= 0) ci_upper <- effect_sizes[i] * 2.0
     
     credible_intervals[i, ] <- c(ci_lower, ci_upper)
   }
