@@ -336,6 +336,75 @@ The Bayesian report includes:
 
 ![Bayesian Power Report Example](https://github.com/username/viromePower/raw/main/man/figures/bayesian_report_example.png)
 
+## Zero-Inflated Bayesian Power Analysis
+
+Virome data is characterized by extreme sparsity that can't be adequately modeled by standard approaches. viromePower implements a zero-inflated Bayesian model that distinguishes between structural zeros (true absence) and sampling zeros (detection failures):
+
+```r
+# Generate zero-inflated virome data that realistically models both
+# true absence (structural zeros) and detection failures (sampling zeros)
+zinb_data <- simulate_zero_inflated_virome(
+  n_samples = 30,             # 30 samples per group
+  n_viruses = 200,            # 200 viral taxa
+  structural_zeros = 0.7,     # 70% structural zeros (true absence)
+  sampling_zeros = 0.2,       # 20% sampling zeros (detection failures)
+  dispersion = 1.5,           # Dispersion parameter for negative binomial
+  effect_size = 2.5,          # 2.5-fold difference between groups
+  zero_inflation_difference = TRUE  # Allow prevalence differences between groups
+)
+
+# Calculate power using the zero-inflated Bayesian model
+zinb_power <- calc_zinb_bayesian_power(
+  n_samples = 25,             # 25 samples per group
+  effect_size = 2.5,          # 2.5-fold difference between groups
+  n_viruses = 150,            # 150 viral taxa
+  structural_zeros = 0.7,     # 70% structural zeros (true absence)
+  sampling_zeros = 0.2,       # 20% sampling zeros (detection failures)
+  dispersion = 1.5,           # Dispersion parameter for NB distribution
+  zero_inflation_difference = TRUE,  # Allow prevalence differences between groups
+  prior_strength = 2.0,       # Moderate prior strength
+  n_sim = 10                  # 10 simulation iterations for quick example
+)
+
+# Print zero-inflated Bayesian power estimate
+print(paste("ZINB Bayesian power:", round(zinb_power$power * 100, 1), "%"))
+# Example output: "ZINB Bayesian power: 68.5%"
+
+# Compare with standard Bayesian approach (combined sparsity model)
+standard_power <- calc_bayesian_power(
+  n_samples = 25,             # Same sample size
+  effect_size = 2.5,          # Same effect size
+  n_viruses = 150,            # Same number of taxa
+  sparsity = 0.8,             # Combined sparsity (structural + sampling)
+  dispersion = 1.5,           # Same dispersion
+  prior_strength = 2.0,       # Same prior strength
+  n_sim = 10                  # Same simulation count
+)
+
+# Print comparison
+print(paste("Standard Bayesian power:", round(standard_power$power * 100, 1), "%"))
+print(paste("ZINB Bayesian power:", round(zinb_power$power * 100, 1), "%"))
+
+# Examine zero-inflation statistics
+print(paste("Structural zeros:", round(zinb_power$zero_inflation_summary$structural_zeros_proportion * 100, 1), "%"))
+print(paste("Sampling zeros:", round(zinb_power$zero_inflation_summary$sampling_zeros_proportion * 100, 1), "%"))
+print(paste("Total sparsity:", round(zinb_power$zero_inflation_summary$observed_sparsity * 100, 1), "%"))
+```
+
+Zero-inflated Bayesian analysis provides several critical advantages for virome studies:
+- Distinguishes between true absence and failed detection
+- Accounts for differential viral prevalence between groups
+- More accurate power estimates in extremely sparse datasets
+- Identifies detection limits vs. biological effects
+- Improves sensitivity for rare viral taxa discovery
+- Provides detection-adjusted effect size estimates
+
+Using zero-inflated models is particularly important when:
+1. Virome data has >80% zeros
+2. Sequencing depth varies significantly between samples
+3. Viral communities have many low-abundance members
+4. Groups may differ in both abundance AND prevalence
+
 ## Citation
 
 If you use viromePower in your research, please cite:

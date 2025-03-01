@@ -16,7 +16,9 @@ calc_bayesian_power(
   posterior_prob_threshold = 0.95,
   n_sim = 100,
   seed = NULL,
-  suppress_warnings = FALSE
+  suppress_warnings = FALSE,
+  diversity_analysis = FALSE,
+  diversity_metrics = c("shannon", "simpson")
 )
 }
 \arguments{
@@ -43,6 +45,11 @@ calc_bayesian_power(
 \item{seed}{Random seed for reproducibility (default: NULL)}
 
 \item{suppress_warnings}{Whether to suppress warnings during calculation (default: FALSE)}
+
+\item{diversity_analysis}{Whether to include Bayesian analysis of alpha diversity (default: FALSE)}
+
+\item{diversity_metrics}{Character vector of alpha diversity metrics to analyze. Options include
+"shannon", "simpson", "richness", "chao1", "ace", "invsimpson", "fisher", and "coverage" (default: c("shannon", "simpson"))}
 }
 \value{
 A list containing:
@@ -54,6 +61,7 @@ A list containing:
 \item posterior_prob_summary: Summary of posterior probabilities from simulations
 \item simulation_results: Detailed simulation results for each iteration
 \item parameters: List of input parameters
+\item diversity_results: If diversity_analysis=TRUE, Bayesian analysis of alpha diversity metrics
 }
 }
 \description{
@@ -78,6 +86,18 @@ print(paste("Bayesian power:", round(power_result$power * 100, 1), "\%"))
 
 # Print the expected number of discoveries
 print(paste("Expected discoveries:", round(power_result$expected_discoveries, 1)))
+
+# Calculate Bayesian power with alpha diversity analysis
+power_div_result <- calc_bayesian_power(
+  n_samples = 20,
+  effect_size = 3.0,
+  n_viruses = 50,
+  diversity_analysis = TRUE,
+  diversity_metrics = c("shannon", "simpson", "richness", "chao1")
+)
+
+# View posterior distributions of diversity metrics
+print(power_div_result$diversity_results$posterior_summary)
 
 # Generate a Bayesian power report
 report_path <- generate_bayesian_power_report(
