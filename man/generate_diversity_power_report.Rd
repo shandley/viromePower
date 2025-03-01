@@ -24,7 +24,7 @@ generate_diversity_power_report(
 
 \item{n_viruses}{Number of viral taxa in the dataset}
 
-\item{diversity_measure}{Type of diversity to analyze: "shannon", "simpson", "richness", "evenness", "bray", "jaccard", or "unifrac" (default: "shannon")}
+\item{diversity_measure}{Type of diversity to analyze: "shannon", "simpson", "richness", "evenness", "chao1", "ace", "inv_simpson", "fisher_alpha", "bray", "jaccard", or "unifrac" (default: "shannon")}
 
 \item{alpha}{Significance level (default: 0.05)}
 
@@ -52,6 +52,24 @@ report_file <- generate_diversity_power_report(
   effect_size = 1.2,
   n_viruses = 200,
   diversity_measure = "shannon"
+)
+
+# Generate a power report for Inverse Simpson index
+inv_simpson_report <- generate_diversity_power_report(
+  n_samples = 15,
+  effect_size = 1.0,
+  n_viruses = 200,
+  diversity_measure = "inv_simpson",
+  output_file = "inv_simpson_power_report.html"
+)
+
+# Generate a power report for ACE richness estimator
+ace_report <- generate_diversity_power_report(
+  n_samples = 18,
+  effect_size = 1.5,
+  n_viruses = 250,
+  diversity_measure = "ace",
+  output_file = "ace_power_report.html"
 )
 
 # Generate a power report for Bray-Curtis dissimilarity

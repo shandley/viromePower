@@ -9,7 +9,7 @@
 #' @param alpha Significance level (default: 0.05)
 #' @param sparsity Proportion of zeros in the data (default: 0.8)
 #' @param dispersion Dispersion parameter for viral abundance (default: 2)
-#' @param diversity_measure Type of diversity to analyze: "shannon", "simpson", "richness", "evenness", "bray", "jaccard", or "unifrac" (default: "shannon")
+#' @param diversity_measure Type of diversity to analyze: "shannon", "simpson", "richness", "evenness", "chao1", "ace", "inv_simpson", "fisher_alpha", "bray", "jaccard", or "unifrac" (default: "shannon")
 #' @param n_sim Number of simulations for Monte Carlo estimation (default: 100)
 #'
 #' @return A list containing power estimates, simulation results, and parameters
@@ -19,6 +19,14 @@
 #' # Calculate power for Shannon diversity
 #' power_shannon <- calc_viral_diversity_power(n_samples = 15, effect_size = 1.2, 
 #'                                            n_viruses = 200, diversity_measure = "shannon")
+#'                                            
+#' # Calculate power for Chao1 richness estimator
+#' power_chao1 <- calc_viral_diversity_power(n_samples = 15, effect_size = 1.2,
+#'                                          n_viruses = 200, diversity_measure = "chao1")
+#'  
+#' # Calculate power for Inverse Simpson index
+#' power_invsimp <- calc_viral_diversity_power(n_samples = 15, effect_size = 1.0,
+#'                                            n_viruses = 200, diversity_measure = "inv_simpson")
 #'                                            
 #' # Calculate power for beta diversity (Bray-Curtis)
 #' power_beta <- calc_viral_diversity_power(n_samples = 20, effect_size = 0.15, 
@@ -37,7 +45,7 @@ calc_viral_diversity_power <- function(n_samples, effect_size, n_viruses,
     stop("alpha must be between 0 and 1")
   }
   
-  valid_measures <- c("shannon", "simpson", "richness", "evenness", "bray", "jaccard", "unifrac")
+  valid_measures <- c("shannon", "simpson", "richness", "evenness", "chao1", "ace", "inv_simpson", "fisher_alpha", "bray", "jaccard", "unifrac")
   if (!(diversity_measure %in% valid_measures)) {
     stop("diversity_measure must be one of: ", paste(valid_measures, collapse = ", "))
   }
@@ -141,6 +149,14 @@ calc_viral_diversity_power <- function(n_samples, effect_size, n_viruses,
         } else if (diversity_measure == "simpson") {
           # Simpson index: 1 - sum(p_i^2)
           diversity_values[j] <- 1 - sum(relative_abundance^2)
+        } else if (diversity_measure == "inv_simpson") {
+          # Inverse Simpson index: 1 / sum(p_i^2)
+          simpson_index <- sum(relative_abundance^2)
+          if (simpson_index < 1e-10) {
+            diversity_values[j] <- 100  # Cap at a reasonable maximum
+          } else {
+            diversity_values[j] <- 1 / simpson_index
+          }
         } else if (diversity_measure == "richness") {
           # Species richness: number of non-zero taxa
           diversity_values[j] <- length(nonzero_counts)
@@ -149,6 +165,115 @@ calc_viral_diversity_power <- function(n_samples, effect_size, n_viruses,
           shannon <- -sum(relative_abundance * log(relative_abundance))
           richness <- length(nonzero_counts)
           diversity_values[j] <- shannon / log(richness)
+        } else if (diversity_measure == "chao1") {
+          # Chao1 richness estimator
+          # Formula: S_obs + (f1^2)/(2*f2) where f1 is singletons, f2 is doubletons
+          f1 <- sum(nonzero_counts == 1)  # Number of singletons
+          f2 <- sum(nonzero_counts == 2)  # Number of doubletons
+          # Avoid division by zero
+          if (f2 == 0) {
+            if (f1 > 0) {
+              f2 <- 1 # Add pseudo-count to avoid division by zero
+            } else {
+              # If no singletons or doubletons, just use observed richness
+              diversity_values[j] <- length(nonzero_counts)
+              next
+            }
+          }
+          diversity_values[j] <- length(nonzero_counts) + (f1^2)/(2*f2)
+        } else if (diversity_measure == "ace") {
+          # ACE (Abundance-based Coverage Estimator)
+          # This is a simplified implementation
+          rare_threshold <- 10  # Traditional cutoff for rare species
+          
+          # Check if we have enough data
+          if (length(nonzero_counts) == 0) {
+            diversity_values[j] <- 0
+            next
+          }
+          
+          s_rare <- sum(nonzero_counts <= rare_threshold)  # Number of rare species
+          s_abun <- sum(nonzero_counts > rare_threshold)   # Number of abundant species
+          
+          # Edge case: no rare species
+          if (s_rare == 0) {
+            diversity_values[j] <- length(nonzero_counts)  # Just use observed richness
+            next
+          }
+          
+          n_rare <- sum(nonzero_counts[nonzero_counts <= rare_threshold])  # Total individuals in rare species
+          
+          # Calculate frequency counts
+          f1 <- sum(nonzero_counts == 1)  # Singletons
+          
+          # Coverage estimate with safeguards
+          if (n_rare == 0 || f1 > n_rare) {
+            diversity_values[j] <- length(nonzero_counts)  # Fallback to observed richness
+            next
+          }
+          
+          c_ace <- 1 - (f1 / n_rare)
+          if (c_ace <= 0.01) c_ace <- 0.01  # Prevent division by zero
+          
+          # Calculate gamma - careful with edge cases
+          frequency_counts <- numeric(rare_threshold)
+          for (i in 1:rare_threshold) {
+            frequency_counts[i] <- sum(nonzero_counts == i)
+          }
+          
+          frequency_sum <- 0
+          for (i in 1:rare_threshold) {
+            if (i > 1) { # Avoid singletons in this calculation
+              frequency_sum <- frequency_sum + i * (i - 1) * frequency_counts[i]
+            }
+          }
+          
+          # Avoid division by zero
+          if (n_rare < 2) {
+            gamma_ace <- 0
+          } else {
+            gamma_ace <- max(0, (s_rare / c_ace) * (frequency_sum / (n_rare * (n_rare - 1))))
+          }
+          
+          # ACE estimate
+          ace_estimate <- s_abun + s_rare/c_ace + (f1/c_ace) * gamma_ace
+          
+          # Ensure reasonable value
+          if (is.na(ace_estimate) || !is.finite(ace_estimate) || ace_estimate < length(nonzero_counts)) {
+            diversity_values[j] <- length(nonzero_counts)  # Fallback to observed richness
+          } else {
+            diversity_values[j] <- min(ace_estimate, length(nonzero_counts) * 2)  # Cap at reasonable value
+          }
+        } else if (diversity_measure == "fisher_alpha") {
+          # Fisher's alpha - based on the logseries approximation
+          # S = alpha * log(1 + N/alpha) where S is richness, N is total abundance
+          
+          # Use an iterative approach to estimate alpha
+          S <- length(nonzero_counts)
+          N <- sum(nonzero_counts)
+          
+          # Handle edge cases
+          if (S == 0 || N == 0) {
+            diversity_values[j] <- 0
+            next
+          }
+          
+          # Initial guess for alpha (avoid divide by zero)
+          alpha_est <- max(0.1, S / max(1e-10, log(1 + N/max(S, 1))))
+          
+          # Simple iterative refinement (normally would use numerical optimization)
+          for (iter in 1:5) {
+            new_alpha <- S / max(1e-10, log(1 + N/max(alpha_est, 1e-10)))
+            # Check for convergence or problematic values
+            if (is.na(new_alpha) || is.infinite(new_alpha) || new_alpha <= 0) {
+              break
+            }
+            alpha_est <- new_alpha
+          }
+          
+          # Ensure reasonable value
+          alpha_est <- max(0, min(alpha_est, 1000))
+          diversity_values[j] <- alpha_est
         }
       }
       

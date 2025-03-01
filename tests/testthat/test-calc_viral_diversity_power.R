@@ -28,6 +28,63 @@ test_that("calc_viral_diversity_power works with Simpson diversity", {
   expect_true(result$power >= 0 && result$power <= 1)
 })
 
+test_that("calc_viral_diversity_power works with Inverse Simpson diversity", {
+  result <- calc_viral_diversity_power(
+    n_samples = 5,
+    effect_size = 1.5,
+    n_viruses = 50,
+    diversity_measure = "inv_simpson",
+    n_sim = 5  # Small number for testing speed
+  )
+  
+  expect_type(result, "list")
+  expect_true("power" %in% names(result))
+  expect_true(result$power >= 0 && result$power <= 1)
+})
+
+test_that("calc_viral_diversity_power works with Chao1 richness estimator", {
+  result <- calc_viral_diversity_power(
+    n_samples = 5,
+    effect_size = 1.5,
+    n_viruses = 50,
+    diversity_measure = "chao1",
+    n_sim = 5  # Small number for testing speed
+  )
+  
+  expect_type(result, "list")
+  expect_true("power" %in% names(result))
+  expect_true(result$power >= 0 && result$power <= 1)
+})
+
+test_that("calc_viral_diversity_power works with ACE richness estimator", {
+  result <- calc_viral_diversity_power(
+    n_samples = 5,
+    effect_size = 1.5,
+    n_viruses = 50,
+    diversity_measure = "ace",
+    n_sim = 5  # Small number for testing speed
+  )
+  
+  expect_type(result, "list")
+  expect_true("power" %in% names(result))
+  expect_true(result$power >= 0 && result$power <= 1)
+})
+
+
+test_that("calc_viral_diversity_power works with Fisher's alpha", {
+  result <- calc_viral_diversity_power(
+    n_samples = 5,
+    effect_size = 1.5,
+    n_viruses = 50,
+    diversity_measure = "fisher_alpha",
+    n_sim = 5  # Small number for testing speed
+  )
+  
+  expect_type(result, "list")
+  expect_true("power" %in% names(result))
+  expect_true(result$power >= 0 && result$power <= 1)
+})
+
 test_that("calc_viral_diversity_power works with Bray-Curtis (beta diversity)", {
   result <- calc_viral_diversity_power(
     n_samples = 5,

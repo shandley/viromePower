@@ -28,7 +28,7 @@ calc_viral_diversity_power(
 
 \item{dispersion}{Dispersion parameter for viral abundance (default: 2)}
 
-\item{diversity_measure}{Type of diversity to analyze: "shannon", "simpson", "richness", "evenness", "bray", "jaccard", or "unifrac" (default: "shannon")}
+\item{diversity_measure}{Type of diversity to analyze: "shannon", "simpson", "richness", "evenness", "chao1", "ace", "inv_simpson", "fisher_alpha", "bray", "jaccard", or "unifrac" (default: "shannon")}
 
 \item{n_sim}{Number of simulations for Monte Carlo estimation (default: 100)}
 }
@@ -36,15 +36,23 @@ calc_viral_diversity_power(
 A list containing power estimates, simulation results, and parameters
 }
 \description{
-Calculates statistical power for detecting differences in alpha and beta diversity 
+Calculates statistical power for detecting differences in alpha and beta diversity
 measures between groups in a virome study, using simulation-based approach.
 }
 \examples{
 # Calculate power for Shannon diversity
 power_shannon <- calc_viral_diversity_power(n_samples = 15, effect_size = 1.2, 
-                                          n_viruses = 200, diversity_measure = "shannon")
-                                          
+                                           n_viruses = 200, diversity_measure = "shannon")
+                                           
+# Calculate power for Chao1 richness estimator
+power_chao1 <- calc_viral_diversity_power(n_samples = 15, effect_size = 1.2,
+                                         n_viruses = 200, diversity_measure = "chao1")
+ 
+# Calculate power for Inverse Simpson index
+power_invsimp <- calc_viral_diversity_power(n_samples = 15, effect_size = 1.0,
+                                           n_viruses = 200, diversity_measure = "inv_simpson")
+                                           
 # Calculate power for beta diversity (Bray-Curtis)
 power_beta <- calc_viral_diversity_power(n_samples = 20, effect_size = 0.15, 
-                                       n_viruses = 300, diversity_measure = "bray")
+                                        n_viruses = 300, diversity_measure = "bray")
 }
