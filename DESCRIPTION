@@ -1,0 +1,34 @@
+Package: viromePower
+Title: Power Analysis for Virome Studies
+Version: 0.1.0
+Authors@R: 
+    person("Scott", "Handley", , "first.last@example.com", role = c("aut", "cre"),
+           comment = c(ORCID = "YOUR-ORCID-ID"))
+Description: Provides tools for power analysis in virome studies. This package 
+    helps researchers determine optimal sample sizes, estimate statistical power,
+    and design robust virome studies accounting for high sparsity, low abundance,
+    and other unique characteristics of viral metagenomic data.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.2.3
+Suggests: 
+    knitr,
+    rmarkdown,
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
+Imports: 
+    dplyr,
+    ggplot2,
+    pwr,
+    tidyr,
+    vegan,
+    compositions,
+    magrittr,
+    shiny,
+    htmlwidgets,
+    DT,
+    stats
+VignetteBuilder: knitr
+URL: https://github.com/username/viromePower
+BugReports: https://github.com/username/viromePower/issues

@@ -1,0 +1,77 @@
+---
+title: "{{title}}"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    theme: cosmo
+    toc: true
+    toc_float: true
+    highlight: tango
+    fig_width: 8
+    fig_height: 6
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = {{include_code}}, warning = FALSE, message = FALSE)
+library(DT)
+library(ggplot2)
+```
+
+## Study Overview
+
+This report presents power analysis results for a virome study with the following parameters:
+
+- Number of viral taxa analyzed: **{{n_viruses}}**
+- Expected effect size (fold change): **{{effect_size}}**
+- Statistical significance level (α): **{{alpha}}**
+- Sparsity (proportion of zeros): **{{sparsity}}**
+- Statistical test method: **{{method}}**
+
+## Power Analysis Results
+
+### Statistical Power
+
+With **{{n_samples}}** samples per group, the estimated statistical power is **{{power}}**.
+
+This means there is a **{{power_pct}}%** probability of detecting a true effect of the specified size.
+
+```{r power-plot, echo=FALSE}
+# Power curve plot would be embedded here
+```
+
+### Sample Size Recommendation
+
+To achieve **{{target_power}}%** power, we recommend a minimum of **{{recommended_sample_size}}** samples per group.
+
+## Distribution of Significant Features
+
+At the recommended sample size, we expect to detect approximately **{{expected_discoveries}}** differentially abundant viral taxa.
+
+```{r features-table, echo=FALSE}
+# DT::datatable would be used here to show expected discoveries
+```
+
+## Assumptions and Limitations
+
+- This analysis assumes a negative binomial distribution of viral counts
+- Multiple testing correction using the Benjamini-Hochberg method
+- Power may be lower for extremely rare viral taxa
+- Actual power depends on true biological variability
+
+## Interactive Power Calculator
+
+Adjust parameters to explore different scenarios:
+
+```{r interactive, echo=FALSE}
+# Shiny widget would be embedded here
+```
+
+## References
+
+1. McMurdie PJ, Holmes S (2014). "Waste Not, Want Not: Why Rarefying Microbiome Data Is Inadmissible." PLoS Computational Biology, 10(4), e1003531.
+2. Love MI, Huber W, Anders S (2014). "Moderated estimation of fold change and dispersion for RNA-seq data with DESeq2." Genome Biology, 15(12), 550.
+3. Xia F, Chen J, Fung WK, Li H (2013). "A logistic normal multinomial regression model for microbiome compositional data analysis." Biometrics, 69(4), 1053-1063.
+
+---
+
+<p style="text-align: center;">Generated with viromePower package</p>

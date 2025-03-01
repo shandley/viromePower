@@ -1,0 +1,137 @@
+---
+title: "Introduction to viromePower"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Introduction to viromePower}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup, eval=FALSE}
+library(viromePower)
+```
+
+# Introduction
+
+Virome studies face unique challenges compared to general microbiome studies, including higher genetic diversity, extreme sparsity, and lower biomass. These factors make power analysis particularly important for virome research to ensure that studies have adequate statistical power to detect biologically meaningful differences.
+
+The `viromePower` package provides tools to:
+
+1. Estimate required sample sizes
+2. Calculate statistical power
+3. Simulate realistic virome data 
+4. Generate comprehensive HTML reports
+
+This vignette demonstrates the basic workflow for using `viromePower` to design robust virome studies.
+
+# Basic Workflow
+
+## 1. Estimating Sample Size
+
+To determine how many samples you need for your study, use the `estimate_sample_size()` function:
+
+```{r sample_size, eval=FALSE}
+# Estimate sample size for 80% power to detect a 1.5-fold difference
+# when testing 100 viral taxa
+sample_size <- estimate_sample_size(
+  power = 0.8,            # Target power
+  effect_size = 1.5,      # Expected fold-change
+  n_viruses = 100,        # Number of viral taxa
+  alpha = 0.05,           # Significance level
+  sparsity = 0.8,         # Proportion of zeros
+  method = "wilcoxon"     # Statistical test
+)
+
+# View results
+sample_size
+```
+
+## 2. Calculating Power
+
+If you already have a fixed sample size (e.g., due to budget constraints), you can calculate the expected power:
+
+```{r power, eval=FALSE}
+# Calculate power for 15 samples per group
+power_result <- calc_virome_power(
+  n_samples = 15,         # Samples per group
+  effect_size = 1.5,      # Expected fold-change
+  n_viruses = 100,        # Number of viral taxa
+  alpha = 0.05,           # Significance level
+  sparsity = 0.8,         # Proportion of zeros
+  method = "wilcoxon",    # Statistical test
+  n_sim = 100             # Number of simulations
+)
+
+# View results
+power_result
+```
+
+## 3. Visualizing Power Curves
+
+To explore the relationship between sample size and power, use the `plot_power_curve()` function:
+
+```{r curve, eval=FALSE}
+# Plot power curve
+power_curve <- plot_power_curve(
+  effect_size = 1.5,                  # Expected fold-change
+  n_viruses = 100,                    # Number of viral taxa
+  sample_sizes = seq(5, 30, by = 5),  # Sample sizes to evaluate
+  alpha = 0.05,                       # Significance level
+  sparsity = 0.8,                     # Proportion of zeros
+  method = "wilcoxon"                 # Statistical test
+)
+
+# Display plot
+power_curve
+```
+
+## 4. Generating Comprehensive Reports
+
+To create a detailed HTML report with interactive visualizations:
+
+```{r report, eval=FALSE}
+# Generate HTML report
+report <- generate_power_report(
+  power_results = power_result,
+  sample_size_results = sample_size,
+  power_curve = power_curve,
+  output_file = "virome_power_report.html",
+  title = "Virome Study Power Analysis Report",
+  include_code = FALSE
+)
+
+# The report will be saved to the specified output file
+```
+
+# Advanced Usage
+
+## Simulating Virome Data
+
+You can simulate realistic virome data with the characteristics typical of viral metagenomic studies:
+
+```{r simulate, eval=FALSE}
+# Simulate virome data with 20 samples and 100 viral taxa
+sim_data <- simulate_virome_data(
+  n_samples = 20,      # Total number of samples
+  n_viruses = 100,     # Number of viral taxa
+  sparsity = 0.8,      # Proportion of zeros
+  dispersion = 2,      # Dispersion parameter
+  effect_size = 1.5    # Effect size for group differences
+)
+
+# The simulated data includes a count matrix and sample metadata
+str(sim_data)
+```
+
+# Conclusion
+
+The `viromePower` package provides a comprehensive suite of tools for designing statistically robust virome studies. By properly estimating required sample sizes and understanding statistical power, researchers can maximize the efficiency and reliability of their virome research.
+
+For more detailed information on function parameters and advanced usage, please refer to the function documentation using `?function_name` (e.g., `?calc_virome_power`).
