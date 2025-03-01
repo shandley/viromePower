@@ -445,7 +445,8 @@ analyze_mixed_effects <- function(strata_data, alpha, clustering_factor) {
           t.test(stratum_a, stratum_b)$p.value
         }, error = function(e) 1)
         
-        if (stratum_p < alpha) {
+        # Check if stratum_p is NA or NULL before comparison
+        if (!is.null(stratum_p) && !is.na(stratum_p) && stratum_p < alpha) {
           stratum_sig[[s]] <- c(stratum_sig[[s]], v)
         }
       }
