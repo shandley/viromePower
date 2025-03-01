@@ -67,11 +67,18 @@ print(paste("False discovery rate:", round(power_result$fdr * 100, 1), "%"))
 # 4. Plot power curve with smoothing
 # (ensures reliable visualization)
 power_curve <- plot_power_curve(
-  effect_size = 1.5,
+  effect_size = 2.0,            # Using a larger effect size to ensure we reach 80% power
   n_viruses = 100,
-  sample_sizes = c(5, 10, 15, 20, 25, 30)
+  sample_sizes = c(5, 10, 15, 20, 25, 30, 35, 40)  # Including larger sample sizes
 )
-print(paste("Sample size for 80% power:", round(attr(power_curve, "sample_size_80"), 1)))
+
+# Safely access the sample size for 80% power
+sample_size_80 <- attr(power_curve, "sample_size_80")
+if (!is.na(sample_size_80)) {
+  print(paste("Sample size for 80% power:", round(sample_size_80, 1)))
+} else {
+  print("Sample size for 80% power: Not available (power doesn't reach 80%)")
+}
 
 # 5. Generate comprehensive HTML report
 # (embedded visualizations and interactive elements)
