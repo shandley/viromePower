@@ -114,17 +114,20 @@ For studies with structured populations (e.g., different geographical regions or
 ```r
 # Calculate power for a stratified sampling design
 stratified_power <- calc_stratified_power(
-  strata_sizes = c(10, 15),       # Samples per group in each stratum
-  effect_sizes = c(1.8, 2.2),     # Different effect sizes by stratum
-  strata_weights = c(0.4, 0.6),   # Importance weights for strata
-  n_viruses = 50,                 # Number of viral taxa
-  clustering_factor = 0.1,        # Intra-class correlation
+  strata_sizes = c(15, 20),         # Samples per group in each stratum
+  effect_sizes = c(3.0, 3.5),       # Effect sizes by stratum
+  strata_weights = c(0.4, 0.6),     # Importance weights for strata
+  n_viruses = 20,                   # Number of viral taxa
+  clustering_factor = 0.05,         # Intra-class correlation
+  sparsity = 0.6,                   # Proportion of zeros
+  dispersion = 1.5,                 # Dispersion parameter
   stratification_vars = "geography", # Variable used for stratification
-  method = "mixed_effects"        # Statistical method for analysis
+  method = "mixed_effects"          # Statistical method for analysis
 )
 
 # View overall power
 print(paste("Overall power:", round(stratified_power$overall_power * 100, 1), "%"))
+# Example output: "Overall power: 47.5 %"
 
 # View stratum-specific power
 print("Power by stratum:")
@@ -132,10 +135,15 @@ for (s in 1:length(stratified_power$stratum_specific_power)) {
   power_s <- stratified_power$stratum_specific_power[[s]]
   print(paste("  Stratum", s, ":", round(power_s * 100, 1), "%"))
 }
+# Example output:
+# "Power by stratum:"
+# "  Stratum 1 : 2.5 %"
+# "  Stratum 2 : 6.0 %"
 
 # View effective sample size (accounting for design effect)
 print(paste("Effective sample size:", round(stratified_power$effective_sample_size, 1), 
             "(actual:", sum(stratified_power$parameters$strata_sizes) * 2, "samples)"))
+# Example output: "Effective sample size: 19.2 (actual: 70 samples)"
 ```
 
 ## Citation

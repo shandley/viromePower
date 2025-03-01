@@ -25,21 +25,35 @@
 #' # Simple stratification with two strata of different sizes
 #' power_result <- calc_stratified_power(
 #'   strata_sizes = c(10, 20),
-#'   effect_sizes = 1.5,
+#'   effect_sizes = 2.5,
 #'   strata_weights = c(0.4, 0.6),
-#'   n_viruses = 100,
+#'   n_viruses = 30,
 #'   clustering_factor = 0.1,
 #'   stratification_vars = "host_factors",
 #'   allocation_method = "proportional"
 #' )
 #'
-#' # Stratification with stratum-specific effect sizes
+#' # Example with higher statistical power
+#' power_result <- calc_stratified_power(
+#'   strata_sizes = c(15, 20),
+#'   effect_sizes = c(3.0, 3.5),
+#'   strata_weights = c(0.4, 0.6),
+#'   n_viruses = 20,
+#'   clustering_factor = 0.05,
+#'   sparsity = 0.6,
+#'   dispersion = 1.5,
+#'   stratification_vars = "geography",
+#'   method = "mixed_effects"
+#' )
+#'
+#' # Stratification with three strata and different effect sizes
 #' power_result <- calc_stratified_power(
 #'   strata_sizes = c(15, 15, 15),
-#'   effect_sizes = c(1.2, 1.5, 1.8),
+#'   effect_sizes = c(2.5, 3.0, 3.5),
 #'   strata_weights = c(0.3, 0.3, 0.4),
-#'   n_viruses = 100,
-#'   clustering_factor = 0.2,
+#'   n_viruses = 30,
+#'   clustering_factor = 0.1,
+#'   sparsity = 0.7,
 #'   stratification_vars = "geography",
 #'   allocation_method = "equal",
 #'   method = "mixed_effects"
