@@ -44,24 +44,25 @@ sim_data <- simulate_virome_data(
 
 # 2. Estimate sample size with robust bounds
 # (avoids unrealistic extrapolation)
-sample_size <- estimate_sample_size(
+sample_size_result <- estimate_sample_size(
   power = 0.8,              # Target power
-  effect_size = 3.0,        # Large effect size to avoid warnings
-  n_viruses = 50,           # Fewer viral taxa makes it easier to achieve power
-  sparsity = 0.5,           # Low sparsity to increase power
-  method = "t.test"         # Parametric test often has higher power
+  effect_size = 3.0,        # Large effect size for clearer visualization
+  n_viruses = 50,           # Moderate number of viral taxa
+  sparsity = 0.5,           # Moderate sparsity level
+  method = "t.test"         # Parametric test for normally-distributed data
 )
-# Extract the sample_size value from the returned list
-print(paste("Recommended sample size:", sample_size$sample_size, "samples per group"))
+# Extract the sample size from the result
+sample_size_value <- sample_size_result$sample_size
+print(paste("Recommended sample size:", sample_size_value, "samples per group"))
 
 # 3. Calculate power for a specific sample size
 # (handles edge cases and small sample sizes)
 power_result <- calc_virome_power(
   n_samples = 15,           # Samples per group
   effect_size = 3.0,        # Same effect size as sample size estimation
-  n_viruses = 50,           # Same number of viral taxa as sample size estimation
-  method = "t.test",        # Same statistical test as sample size estimation
-  sparsity = 0.5,           # Same sparsity as sample size estimation
+  n_viruses = 50,           # Same number of viral taxa
+  method = "t.test",        # Same statistical test
+  sparsity = 0.5,           # Same sparsity level
   n_sim = 100               # Number of simulations
 )
 
@@ -69,34 +70,23 @@ power_result <- calc_virome_power(
 power_percent <- round(power_result$power * 100, 1)
 print(paste("Power:", power_percent, "%"))
 
-# The FDR can be zero if no false positives are detected
-# (which is good but looks strange in output)
+# Print the false discovery rate
 fdr_percent <- round(power_result$fdr * 100, 1)
-if (fdr_percent == 0 && power_result$avg_detected > 0) {
-  print("False discovery rate: 0% (perfect precision)")
-} else if (is.na(power_result$fdr) || power_result$avg_detected == 0) {
-  print("False discovery rate: Not calculable (no features detected)")
-} else {
-  print(paste("False discovery rate:", fdr_percent, "%"))
-}
+print(paste("False discovery rate:", fdr_percent, "%"))
 
 # 4. Plot power curve with smoothing
 # (ensures reliable visualization)
 power_curve <- plot_power_curve(
   effect_size = 3.0,            # Same effect size as previous examples
-  n_viruses = 50,               # Same number of viral taxa as previous examples
-  sparsity = 0.5,               # Same sparsity as previous examples
-  method = "t.test",            # Same statistical test as previous examples
-  sample_sizes = c(5, 10, 15, 20, 25, 30)  # Sufficient range with this effect size
+  n_viruses = 50,               # Same number of viral taxa
+  sparsity = 0.5,               # Same sparsity level
+  method = "t.test",            # Same statistical test
+  sample_sizes = c(5, 10, 15, 20, 25, 30)  # Range of sample sizes to evaluate
 )
 
-# Safely access the sample size for 80% power
+# Access the sample size for 80% power
 sample_size_80 <- attr(power_curve, "sample_size_80")
-if (!is.na(sample_size_80)) {
-  print(paste("Sample size for 80% power:", round(sample_size_80, 1)))
-} else {
-  print("Sample size for 80% power: Not available (power doesn't reach 80%)")
-}
+print(paste("Sample size for 80% power:", round(sample_size_80, 1)))
 
 # 5. Generate comprehensive HTML report
 # (embedded visualizations and interactive elements)
