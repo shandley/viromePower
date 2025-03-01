@@ -28,7 +28,7 @@ calc_viral_diversity_power(
 
 \item{dispersion}{Dispersion parameter for viral abundance (default: 2)}
 
-\item{diversity_measure}{Type of diversity to analyze: "shannon", "simpson", "richness", "evenness", "chao1", "ace", "inv_simpson", "fisher_alpha", "goods_coverage", "berger_parker", "bray", "jaccard", or "unifrac" (default: "shannon")}
+\item{diversity_measure}{Type of diversity to analyze: "shannon", "simpson", "richness", "evenness", "chao1", "ace", "inv_simpson", "fisher_alpha", "goods_coverage", "berger_parker", "bray", "jaccard", "sorensen", "morisita_horn", "ruzicka", "cca" (default: "shannon")}
 
 \item{n_sim}{Number of simulations for Monte Carlo estimation (default: 100)}
 }
@@ -57,6 +57,14 @@ power_bp <- calc_viral_diversity_power(n_samples = 15, effect_size = 1.0,
                                      n_viruses = 200, diversity_measure = "berger_parker")
                                           
 # Calculate power for beta diversity (Bray-Curtis)
-power_beta <- calc_viral_diversity_power(n_samples = 20, effect_size = 0.15, 
-                                        n_viruses = 300, diversity_measure = "bray")
+power_bray <- calc_viral_diversity_power(n_samples = 20, effect_size = 0.15, 
+                                       n_viruses = 300, diversity_measure = "bray")
+                                       
+# Calculate power for Sørensen index (presence/absence)
+power_sorensen <- calc_viral_diversity_power(n_samples = 25, effect_size = 0.2,
+                                           n_viruses = 200, diversity_measure = "sorensen")
+                                           
+# Calculate power for Morisita-Horn index (abundance-weighted similarity)
+power_morisita <- calc_viral_diversity_power(n_samples = 20, effect_size = 0.2,
+                                           n_viruses = 150, diversity_measure = "morisita_horn")
 }

@@ -24,7 +24,7 @@ generate_diversity_power_report(
 
 \item{n_viruses}{Number of viral taxa in the dataset}
 
-\item{diversity_measure}{Type of diversity to analyze: "shannon", "simpson", "richness", "evenness", "chao1", "ace", "inv_simpson", "fisher_alpha", "goods_coverage", "berger_parker", "bray", "jaccard", or "unifrac" (default: "shannon")}
+\item{diversity_measure}{Type of diversity to analyze: "shannon", "simpson", "richness", "evenness", "chao1", "ace", "inv_simpson", "fisher_alpha", "goods_coverage", "berger_parker", "bray", "jaccard", "sorensen", "morisita_horn", "ruzicka", "cca" (default: "shannon")}
 
 \item{alpha}{Significance level (default: 0.05)}
 

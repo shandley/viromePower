@@ -8,7 +8,7 @@
 #' @param effect_size Effect size to use when varying sample size (default: 1.0)
 #' @param n_samples Number of samples to use when varying effect size (default: 15)
 #' @param n_viruses Number of viral taxa to simulate (default: 200)
-#' @param diversity_measure Type of diversity to analyze: "shannon", "simpson", "richness", "evenness", "chao1", "ace", "inv_simpson", "fisher_alpha", "goods_coverage", "berger_parker", "bray", "jaccard", or "unifrac" (default: "shannon")
+#' @param diversity_measure Type of diversity to analyze: "shannon", "simpson", "richness", "evenness", "chao1", "ace", "inv_simpson", "fisher_alpha", "goods_coverage", "berger_parker", "bray", "jaccard", "sorensen", "morisita_horn", "ruzicka", "cca" (default: "shannon")
 #' @param alpha Significance level (default: 0.05)
 #' @param sparsity Proportion of zeros in the data (default: 0.8)
 #' @param dispersion Dispersion parameter for viral abundance (default: 2)
@@ -131,7 +131,10 @@ plot_diversity_power_curve <- function(param_range, param_type = "n_samples",
                             berger_parker = "Berger-Parker Dominance Index",
                             bray = "Bray-Curtis Dissimilarity",
                             jaccard = "Jaccard Distance",
-                            unifrac = "UniFrac Distance",
+                            sorensen = "Sørensen Index",
+                            morisita_horn = "Morisita-Horn Similarity",
+                            ruzicka = "Ružička Distance",
+                            cca = "CCA Distance",
                             "Diversity")
   
   # Create plot title

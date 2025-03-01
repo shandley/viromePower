@@ -127,6 +127,62 @@ test_that("calc_viral_diversity_power works with Bray-Curtis (beta diversity)", 
   expect_true(result$power >= 0 && result$power <= 1)
 })
 
+test_that("calc_viral_diversity_power works with Sørensen index", {
+  result <- calc_viral_diversity_power(
+    n_samples = 5,
+    effect_size = 0.2,
+    n_viruses = 50,
+    diversity_measure = "sorensen",
+    n_sim = 5  # Small number for testing speed
+  )
+  
+  expect_type(result, "list")
+  expect_true("power" %in% names(result))
+  expect_true(result$power >= 0 && result$power <= 1)
+})
+
+test_that("calc_viral_diversity_power works with Morisita-Horn similarity", {
+  result <- calc_viral_diversity_power(
+    n_samples = 5,
+    effect_size = 0.2,
+    n_viruses = 50,
+    diversity_measure = "morisita_horn",
+    n_sim = 5  # Small number for testing speed
+  )
+  
+  expect_type(result, "list")
+  expect_true("power" %in% names(result))
+  expect_true(result$power >= 0 && result$power <= 1)
+})
+
+test_that("calc_viral_diversity_power works with Ružička distance", {
+  result <- calc_viral_diversity_power(
+    n_samples = 5,
+    effect_size = 0.2,
+    n_viruses = 50,
+    diversity_measure = "ruzicka",
+    n_sim = 5  # Small number for testing speed
+  )
+  
+  expect_type(result, "list")
+  expect_true("power" %in% names(result))
+  expect_true(result$power >= 0 && result$power <= 1)
+})
+
+test_that("calc_viral_diversity_power works with CCA distance", {
+  result <- calc_viral_diversity_power(
+    n_samples = 5,
+    effect_size = 0.2,
+    n_viruses = 50,
+    diversity_measure = "cca",
+    n_sim = 5  # Small number for testing speed
+  )
+  
+  expect_type(result, "list")
+  expect_true("power" %in% names(result))
+  expect_true(result$power >= 0 && result$power <= 1)
+})
+
 test_that("calc_viral_diversity_power validates input parameters", {
   # Invalid n_samples
   expect_error(

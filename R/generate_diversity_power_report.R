@@ -6,7 +6,7 @@
 #' @param n_samples Number of samples per group to analyze
 #' @param effect_size Expected effect size between groups
 #' @param n_viruses Number of viral taxa in the dataset
-#' @param diversity_measure Type of diversity to analyze: "shannon", "simpson", "richness", "evenness", "chao1", "ace", "inv_simpson", "fisher_alpha", "goods_coverage", "berger_parker", "bray", "jaccard", or "unifrac" (default: "shannon")
+#' @param diversity_measure Type of diversity to analyze: "shannon", "simpson", "richness", "evenness", "chao1", "ace", "inv_simpson", "fisher_alpha", "goods_coverage", "berger_parker", "bray", "jaccard", "sorensen", "morisita_horn", "ruzicka", "cca" (default: "shannon")
 #' @param alpha Significance level (default: 0.05)
 #' @param sparsity Proportion of zeros in the data (default: 0.8)
 #' @param dispersion Dispersion parameter for viral abundance (default: 2)
@@ -155,7 +155,10 @@ generate_diversity_power_report <- function(n_samples, effect_size, n_viruses,
                            berger_parker = "Berger-Parker Dominance Index",
                            bray = "Bray-Curtis Dissimilarity",
                            jaccard = "Jaccard Distance",
-                           unifrac = "UniFrac Distance",
+                           sorensen = "Sørensen Index",
+                           morisita_horn = "Morisita-Horn Similarity",
+                           ruzicka = "Ružička Distance",
+                           cca = "CCA Distance",
                            "Diversity")
   
   # Generate sample size curve

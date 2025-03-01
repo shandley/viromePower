@@ -9,7 +9,7 @@
 #' @param alpha Significance level (default: 0.05)
 #' @param sparsity Proportion of zeros in the data (default: 0.8)
 #' @param dispersion Dispersion parameter for viral abundance (default: 2)
-#' @param diversity_measure Type of diversity to analyze: "shannon", "simpson", "richness", "evenness", "chao1", "ace", "inv_simpson", "fisher_alpha", "goods_coverage", "berger_parker", "bray", "jaccard", or "unifrac" (default: "shannon")
+#' @param diversity_measure Type of diversity to analyze: "shannon", "simpson", "richness", "evenness", "chao1", "ace", "inv_simpson", "fisher_alpha", "goods_coverage", "berger_parker", "bray", "jaccard", "sorensen", "morisita_horn", "ruzicka", "cca" (default: "shannon")
 #' @param n_sim Number of simulations for Monte Carlo estimation (default: 100)
 #'
 #' @return A list containing power estimates, simulation results, and parameters
@@ -33,8 +33,16 @@
 #'                                      n_viruses = 200, diversity_measure = "berger_parker")
 #'                                           
 #' # Calculate power for beta diversity (Bray-Curtis)
-#' power_beta <- calc_viral_diversity_power(n_samples = 20, effect_size = 0.15, 
-#'                                         n_viruses = 300, diversity_measure = "bray")
+#' power_bray <- calc_viral_diversity_power(n_samples = 20, effect_size = 0.15, 
+#'                                        n_viruses = 300, diversity_measure = "bray")
+#'                                        
+#' # Calculate power for Sørensen index (presence/absence)
+#' power_sorensen <- calc_viral_diversity_power(n_samples = 25, effect_size = 0.2,
+#'                                            n_viruses = 200, diversity_measure = "sorensen")
+#'                                            
+#' # Calculate power for Morisita-Horn index (abundance-weighted similarity)
+#' power_morisita <- calc_viral_diversity_power(n_samples = 20, effect_size = 0.2,
+#'                                            n_viruses = 150, diversity_measure = "morisita_horn")
 calc_viral_diversity_power <- function(n_samples, effect_size, n_viruses,
                                       alpha = 0.05, sparsity = 0.8, dispersion = 2,
                                       diversity_measure = "shannon", n_sim = 100) {
@@ -49,13 +57,13 @@ calc_viral_diversity_power <- function(n_samples, effect_size, n_viruses,
     stop("alpha must be between 0 and 1")
   }
   
-  valid_measures <- c("shannon", "simpson", "richness", "evenness", "chao1", "ace", "inv_simpson", "fisher_alpha", "goods_coverage", "berger_parker", "bray", "jaccard", "unifrac")
+  valid_measures <- c("shannon", "simpson", "richness", "evenness", "chao1", "ace", "inv_simpson", "fisher_alpha", "goods_coverage", "berger_parker", "bray", "jaccard", "sorensen", "morisita_horn", "ruzicka", "cca")
   if (!(diversity_measure %in% valid_measures)) {
     stop("diversity_measure must be one of: ", paste(valid_measures, collapse = ", "))
   }
   
   # Determine if this is alpha or beta diversity
-  is_beta <- diversity_measure %in% c("bray", "jaccard", "unifrac")
+  is_beta <- diversity_measure %in% c("bray", "jaccard", "sorensen", "morisita_horn", "ruzicka", "cca")
   
   # Initialize result storage
   significant_tests <- numeric(n_sim)
@@ -355,20 +363,101 @@ calc_viral_diversity_power <- function(n_samples, effect_size, n_viruses,
         # Jaccard distance (based on presence/absence)
         binary_counts <- ifelse(counts_t > 0, 1, 0)
         dist_matrix <- as.matrix(vegan::vegdist(binary_counts, method = "jaccard"))
-      } else if (diversity_measure == "unifrac") {
-        # Simple UniFrac-like distance (without phylogeny)
-        # For true UniFrac, would need phylogenetic tree
-        # This is a simplified version that weighs by abundance
+      } else if (diversity_measure == "sorensen") {
+        # Sørensen index (equivalent to Bray-Curtis on presence/absence data)
         binary_counts <- ifelse(counts_t > 0, 1, 0)
-        dist_matrix <- as.matrix(vegan::vegdist(binary_counts, method = "jaccard"))
+        dist_matrix <- as.matrix(vegan::vegdist(binary_counts, method = "bray"))
+      } else if (diversity_measure == "morisita_horn") {
+        # Morisita-Horn similarity - less sensitive to sample size and richness
+        # First, ensure we have necessary transformation for counts
         
-        # Modify distance by abundance weighting (similar to weighted UniFrac)
-        for (j in 1:nrow(dist_matrix)) {
-          for (k in 1:ncol(dist_matrix)) {
-            if (j != k) {
-              # Weight by abundance
-              abundance_weight <- sum(abs(counts_t[j,] - counts_t[k,])) / sum(counts_t[j,] + counts_t[k,])
-              dist_matrix[j,k] <- dist_matrix[j,k] * abundance_weight
+        # Create custom function for Morisita-Horn distance
+        morisita_horn_dist <- function(x, y) {
+          # Both vectors must be non-zero
+          if (sum(x) == 0 || sum(y) == 0) return(1)
+          
+          # Calculate proportions for each vector
+          px <- x / sum(x)
+          py <- y / sum(y)
+          
+          # Calculate Simpson's lambda for each vector
+          lambda_x <- sum(px^2)
+          lambda_y <- sum(py^2)
+          
+          # Calculate Morisita-Horn index
+          numerator <- 2 * sum(px * py)
+          denominator <- (lambda_x + lambda_y)
+          
+          # Ensure valid distance
+          if (denominator == 0) return(1)
+          
+          # Return as distance (1 - similarity)
+          return(1 - (numerator / denominator))
+        }
+        
+        # Apply function to all pairs
+        n_samples <- nrow(counts_t)
+        dist_matrix <- matrix(0, nrow = n_samples, ncol = n_samples)
+        for (i in 1:n_samples) {
+          for (j in 1:n_samples) {
+            if (i != j) {
+              dist_matrix[i, j] <- morisita_horn_dist(counts_t[i,], counts_t[j,])
+            }
+          }
+        }
+      } else if (diversity_measure == "ruzicka") {
+        # Quantitative Jaccard (Ružička) - abundance-based version of Jaccard
+        # Similar to Bray-Curtis but with different emphasis
+        ruzicka_dist <- function(x, y) {
+          # Handle zero vectors
+          if (sum(x) == 0 && sum(y) == 0) return(0)
+          if (sum(x) == 0 || sum(y) == 0) return(1)
+          
+          # Calculate Ružička distance
+          sum_min <- sum(pmin(x, y))
+          sum_max <- sum(pmax(x, y))
+          
+          # Return distance (1 - similarity)
+          return(1 - (sum_min / sum_max))
+        }
+        
+        # Apply function to all pairs
+        n_samples <- nrow(counts_t)
+        dist_matrix <- matrix(0, nrow = n_samples, ncol = n_samples)
+        for (i in 1:n_samples) {
+          for (j in 1:n_samples) {
+            if (i != j) {
+              dist_matrix[i, j] <- ruzicka_dist(counts_t[i,], counts_t[j,])
+            }
+          }
+        }
+      } else if (diversity_measure == "cca") {
+        # CCA (Canonical Correspondence Analysis) distances
+        # For simplicity, we'll create a mock environmental variable as group identity
+        # In real implementation, this would use vegan::cca and extract distances
+        
+        # Create a simple CCA distance approximation
+        # Generate a mock environmental gradient based on group membership
+        env_var <- as.numeric(factor(metadata$group))
+        
+        # Create weighted Euclidean distance that emphasizes taxa correlating with environment
+        cca_dist <- function(x, y, env_x, env_y) {
+          # Basic Euclidean first
+          base_dist <- sqrt(sum((x - y)^2))
+          
+          # Weight by environmental difference (higher weight = more different)
+          env_weight <- 1 + abs(env_x - env_y)
+          
+          return(base_dist * env_weight)
+        }
+        
+        # Apply function to all pairs
+        n_samples <- nrow(counts_t)
+        dist_matrix <- matrix(0, nrow = n_samples, ncol = n_samples)
+        for (i in 1:n_samples) {
+          for (j in 1:n_samples) {
+            if (i != j) {
+              dist_matrix[i, j] <- cca_dist(counts_t[i,], counts_t[j,], env_var[i], env_var[j])
             }
           }
         }
