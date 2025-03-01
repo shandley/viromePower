@@ -315,7 +315,7 @@ generate_diversity_power_report <- function(n_samples, effect_size, n_viruses,
     "<div style=\"background-color: #f8f8f8; padding: 15px; border-radius: 5px; margin-bottom: 20px;\">\n",
     "  <h3>Statistical Power</h3>\n",
     "  <p>The estimated statistical power for detecting ", if(is_beta) "community differences" else "diversity differences", " with the specified parameters is:</p>\n",
-    "  <h2 style=\"color: ", "{{result_color}}", ";\">", "{{power_pct}}", "% Power</h2>\n",
+    "  <h2 style=\"color: `r result_color`\">`r power_pct`% Power</h2>\n",
     "  ", if(is.logical(recommended_value) && !recommended_value) "" else paste0("<p><strong>Recommendation:</strong> To achieve at least 80% power, you should use ", recommended_value, " samples per group.</p>"), "\n",
     "</div>\n\n",
     
@@ -362,7 +362,7 @@ generate_diversity_power_report <- function(n_samples, effect_size, n_viruses,
     
     "### Power Interpretation\n\n",
     
-    "{{power_interpretation}}\n\n",
+    "`r power_interpretation`\n\n",
     
     "### Statistical Background\n\n",
     
