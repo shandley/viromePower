@@ -22,10 +22,13 @@ simulate_virome_data <- function(n_samples, n_viruses, sparsity = 0.8,
   if (is.null(groups)) {
     # Default: Half samples in group A, half in group B
     if (n_samples %% 2 != 0) {
-      warning("Odd number of samples, adjusting for balanced groups")
-      n_samples <- n_samples + 1
+      # Handle odd number silently by ensuring even split
+      n_group_a <- floor(n_samples/2)
+      n_group_b <- n_samples - n_group_a
+      groups <- c(rep("A", n_group_a), rep("B", n_group_b))
+    } else {
+      groups <- rep(c("A", "B"), each = n_samples/2)
     }
-    groups <- rep(c("A", "B"), each = n_samples/2)
   } else {
     # Check if provided groups match n_samples
     if (length(groups) != n_samples) {

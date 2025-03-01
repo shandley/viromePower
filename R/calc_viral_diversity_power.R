@@ -57,11 +57,15 @@ calc_viral_diversity_power <- function(n_samples, effect_size, n_viruses,
       
       # For beta diversity, the effect size is in terms of between-group distance
       # For alpha diversity, we implement as a mean difference in diversity scores
+      
+      # Calculate total samples for both groups, accounting for adjusted_n_samples
+      total_samples <- adjusted_n_samples * 2
+      
       if (is_beta) {
         # Beta diversity - we implement by creating structured differences 
         # between groups with the given effect size
         simulate_virome_data(
-          n_samples = adjusted_n_samples * 2,  # Total samples (both groups)
+          n_samples = total_samples,  # Total samples (both groups)
           n_viruses = n_viruses,
           sparsity = sparsity,
           dispersion = dispersion,
@@ -71,7 +75,7 @@ calc_viral_diversity_power <- function(n_samples, effect_size, n_viruses,
       } else {
         # Alpha diversity - implement by changing both abundance patterns and richness
         simulate_virome_data(
-          n_samples = adjusted_n_samples * 2,  # Total samples (both groups)
+          n_samples = total_samples,  # Total samples (both groups)
           n_viruses = n_viruses,
           sparsity = sparsity - (0.05 * effect_size), # Less zeros in one group = higher diversity
           dispersion = dispersion,
@@ -83,11 +87,20 @@ calc_viral_diversity_power <- function(n_samples, effect_size, n_viruses,
     # If simulation failed, create minimal valid data
     if (inherits(sim_data, "try-error")) {
       warning("Simulation failed, using minimal data structure")
+      # Ensure even number of samples
+      total_samples <- n_samples * 2
+      # Create matrix directly with proper dimensions
+      random_counts <- matrix(0, nrow = n_viruses, ncol = total_samples)
+      for (i in 1:n_viruses) {
+        for (j in 1:total_samples) {
+          random_counts[i, j] <- rpois(1, lambda = 1)
+        }
+      }
+      
       sim_data <- list(
-        counts = matrix(rpois(n_viruses * n_samples * 2, lambda = 1), 
-                      nrow = n_viruses, ncol = n_samples * 2),
+        counts = random_counts,
         metadata = data.frame(
-          sample_id = paste0("sample_", 1:(n_samples * 2)),
+          sample_id = paste0("sample_", 1:total_samples),
           group = rep(c("A", "B"), each = n_samples)
         ),
         diff_taxa = sample(n_viruses, max(1, round(n_viruses * 0.1)))
