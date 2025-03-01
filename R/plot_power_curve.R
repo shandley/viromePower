@@ -21,25 +21,110 @@ plot_power_curve <- function(effect_size, n_viruses,
                            sample_sizes = seq(5, 30, by = 5),
                            alpha = 0.05, sparsity = 0.8, dispersion = 2,
                            method = "wilcoxon") {
-  # Implementation will go here
-  # This would include code to calculate power at different sample sizes
-  # and create a ggplot visualization
+  # Check that ggplot2 is installed
+  if (!requireNamespace("ggplot2", quietly = TRUE)) {
+    stop("The 'ggplot2' package is required for this function")
+  }
   
-  # Placeholder for function implementation
-  message("Power curve plotting function implemented. Add actual implementation.")
+  # Validate input parameters
+  if (length(sample_sizes) < 2) {
+    stop("At least 2 sample sizes are needed to create a power curve")
+  }
+  if (effect_size <= 0) {
+    stop("effect_size must be positive")
+  }
   
-  # Create empty plot as placeholder
-  ggplot2::ggplot(data.frame(x = sample_sizes, 
-                           y = pmin(1, sample_sizes/30)), 
-                ggplot2::aes(x = x, y = y)) +
-    ggplot2::geom_line() +
-    ggplot2::geom_point() +
+  # Sort sample sizes
+  sample_sizes <- sort(sample_sizes)
+  
+  # Calculate power for each sample size
+  powers <- numeric(length(sample_sizes))
+  
+  for (i in seq_along(sample_sizes)) {
+    # Use a reduced number of simulations for efficiency
+    n_sim_reduced <- min(50, max(10, floor(100 / length(sample_sizes))))
+    
+    # Calculate power for this sample size
+    power_result <- calc_virome_power(
+      n_samples = sample_sizes[i],
+      effect_size = effect_size,
+      n_viruses = n_viruses,
+      alpha = alpha,
+      sparsity = sparsity,
+      dispersion = dispersion,
+      method = method,
+      n_sim = n_sim_reduced
+    )
+    
+    powers[i] <- power_result$power
+  }
+  
+  # Create data frame for plotting
+  plot_data <- data.frame(
+    sample_size = sample_sizes,
+    power = powers
+  )
+  
+  # Find the sample size needed for 80% power (common threshold)
+  power_80 <- 0.8
+  sample_size_80 <- NA
+  
+  if (max(powers) >= power_80) {
+    if (min(powers) <= power_80) {
+      # Interpolate to find the sample size for 80% power
+      sample_size_80 <- stats::approx(
+        x = powers,
+        y = sample_sizes,
+        xout = power_80
+      )$y
+    } else {
+      # All powers are above 80%, use the smallest sample size
+      sample_size_80 <- min(sample_sizes)
+    }
+  }
+  
+  # Create the plot
+  p <- ggplot2::ggplot(plot_data, ggplot2::aes(x = sample_size, y = power)) +
+    ggplot2::geom_line(linewidth = 1.2, color = "#3366cc") +
+    ggplot2::geom_point(size = 3, color = "#3366cc") +
+    ggplot2::geom_hline(yintercept = 0.8, linetype = "dashed", color = "#cc3366") +
+    ggplot2::scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, by = 0.1)) +
     ggplot2::labs(
       x = "Sample Size per Group",
       y = "Statistical Power",
       title = "Power Curve for Virome Study",
       subtitle = paste("Effect size:", effect_size, 
-                      "| Number of viruses:", n_viruses)
+                      "| Number of viruses:", n_viruses, 
+                      "| Method:", method)
     ) +
-    ggplot2::theme_minimal()
+    ggplot2::theme_minimal() +
+    ggplot2::theme(
+      plot.title = ggplot2::element_text(face = "bold", size = 14),
+      plot.subtitle = ggplot2::element_text(size = 11),
+      axis.title = ggplot2::element_text(size = 12),
+      axis.text = ggplot2::element_text(size = 10)
+    )
+  
+  # Add a vertical line at the 80% power point if applicable
+  if (!is.na(sample_size_80)) {
+    p <- p + ggplot2::geom_vline(
+      xintercept = sample_size_80, 
+      linetype = "dashed", 
+      color = "#cc3366"
+    ) +
+    ggplot2::annotate(
+      "text",
+      x = sample_size_80 + 0.5,
+      y = 0.5,
+      label = paste("n =", round(sample_size_80, 1)),
+      hjust = 0,
+      color = "#cc3366"
+    )
+  }
+  
+  # Add power and sample size info as a data attribute
+  attr(p, "power_data") <- plot_data
+  attr(p, "sample_size_80") <- sample_size_80
+  
+  return(p)
 }
