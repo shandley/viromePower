@@ -44,6 +44,20 @@ generate_stratified_power_report <- function(stratified_power_results,
     stop("stratified_power_results must be the output from calc_stratified_power()")
   }
   
+  # Check for required packages
+  required_packages <- c("rmarkdown", "ggplot2", "dplyr", "tidyr", "knitr", "kableExtra")
+  missing_packages <- required_packages[!sapply(required_packages, requireNamespace, quietly = TRUE)]
+  
+  if (length(missing_packages) > 0) {
+    stop(paste0(
+      "Missing required packages for report generation: ", 
+      paste(missing_packages, collapse = ", "), 
+      ". Please install them with: install.packages(c('", 
+      paste(missing_packages, collapse = "', '"), 
+      "'))"
+    ))
+  }
+  
   # Create a temporary Rmd file with the report content
   rmd_file <- tempfile(fileext = ".Rmd")
   
@@ -52,19 +66,24 @@ generate_stratified_power_report <- function(stratified_power_results,
     stratified_power_results = stratified_power_results,
     title = title,
     include_code = include_code,
-    custom_css = custom_css
+    custom_css = custom_css,
+    output_file = output_file
   )
   
   # Write the content to the temporary file
   writeLines(rmd_content, rmd_file)
   
   # Render the report using rmarkdown
-  rmarkdown::render(
-    input = rmd_file,
-    output_file = basename(output_file),
-    output_dir = dirname(output_file),
-    quiet = TRUE
-  )
+  tryCatch({
+    rmarkdown::render(
+      input = rmd_file,
+      output_file = basename(output_file),
+      output_dir = dirname(output_file),
+      quiet = TRUE
+    )
+  }, error = function(e) {
+    stop(paste0("Error rendering report: ", e$message))
+  })
   
   # Return the path to the generated report
   return(normalizePath(output_file))
@@ -78,13 +97,15 @@ generate_stratified_power_report <- function(stratified_power_results,
 #' @param title Title for the report
 #' @param include_code Boolean indicating whether to include R code
 #' @param custom_css Optional custom CSS for styling
+#' @param output_file File path for the output HTML report
 #'
 #' @return A character string with the R markdown content
 #' @keywords internal
 generate_stratified_report_rmd <- function(stratified_power_results,
                                           title,
                                           include_code,
-                                          custom_css) {
+                                          custom_css,
+                                          output_file) {
   
   # Extract data for easier use in the report
   power_data <- stratified_power_results
