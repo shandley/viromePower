@@ -481,7 +481,7 @@ These diagnostics show how well the zero-inflated negative binomial model captur
 sample_sizes <- seq(10, 50, by = 10)
 n_points <- length(sample_sizes)
 
-# Create mock power results if the actual ones weren't provided
+# Create mock power results if the actual ones were not provided
 std_power <- c(0.25, 0.45, 0.60, 0.72, 0.82)
 zinb_power <- c(0.40, 0.65, 0.78, 0.85, 0.92)
 
@@ -804,7 +804,7 @@ if (requireNamespace("DiagrammeR", quietly = TRUE)) {
   library(DiagrammeR)
   
   # Create a decision tree visualization
-  grViz("
+  grViz(paste0("
   digraph decision_tree {
     # Node attributes
     node [shape = rectangle, style = filled, fillcolor = lightblue, fontname = Helvetica, fontsize = 12]
@@ -813,20 +813,20 @@ if (requireNamespace("DiagrammeR", quietly = TRUE)) {
     edge [color = gray50, arrowhead = vee]
     
     # Nodes
-    A [label = 'Analyze Virome Data', fillcolor = '#3498db', fontcolor = white]
-    B [label = 'Is data highly sparse?\n(>70% zeros)', fillcolor = '#f9f9f9']
-    C [label = 'Use Standard\nNegative Binomial', fillcolor = '#f9f9f9']
-    D [label = 'Are zeros in excess of\nwhat NB predicts?', fillcolor = '#f9f9f9']
-    E [label = 'Use Zero-Inflated\nNegative Binomial', fillcolor = '#e74c3c', fontcolor = white]
+    A [label = \"Analyze Virome Data\", fillcolor = \"#3498db\", fontcolor = white]
+    B [label = \"Is data highly sparse?\\n(>70% zeros)\", fillcolor = \"#f9f9f9\"]
+    C [label = \"Use Standard\\nNegative Binomial\", fillcolor = \"#f9f9f9\"]
+    D [label = \"Are zeros in excess of\\nwhat NB predicts?\", fillcolor = \"#f9f9f9\"]
+    E [label = \"Use Zero-Inflated\\nNegative Binomial\", fillcolor = \"#e74c3c\", fontcolor = white]
     
     # Edges
     A -> B
-    B -> C [label = 'No']
-    B -> D [label = 'Yes']
-    D -> C [label = 'No']
-    D -> E [label = 'Yes']
+    B -> C [label = \"No\"]
+    B -> D [label = \"Yes\"]
+    D -> C [label = \"No\"]
+    D -> E [label = \"Yes\"]
   }
-  ")
+  "))
 } else {
   # Simple text-based decision tree if DiagrammeR not available
   plot(1, 1, type = "n", xlim = c(0, 10), ylim = c(0, 10), xlab = "", ylab = "", axes = FALSE)
