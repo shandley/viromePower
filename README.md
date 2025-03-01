@@ -144,7 +144,24 @@ for (s in 1:length(stratified_power$stratum_specific_power)) {
 print(paste("Effective sample size:", round(stratified_power$effective_sample_size, 1), 
             "(actual:", sum(stratified_power$parameters$strata_sizes) * 2, "samples)"))
 # Example output: "Effective sample size: 19.2 (actual: 70 samples)"
+
+# Generate comprehensive HTML report with visualizations
+report_path <- generate_stratified_power_report(
+  stratified_power_results = stratified_power,
+  output_file = "stratified_power_report.html",
+  title = "Stratified Virome Study Power Analysis",
+  include_code = TRUE  # Include reproducible code in the report
+)
 ```
+
+The generated report includes:
+- Interactive visualizations comparing power across strata
+- Design effect and effective sample size analysis
+- False discovery rate assessment
+- Customized recommendations based on the analysis results
+- Reproducible code for all calculations and visualizations
+
+![Stratified Power Report Example](https://github.com/username/viromePower/raw/main/man/figures/stratified_report_example.png)
 
 ## Citation
 
