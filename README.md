@@ -46,20 +46,22 @@ sim_data <- simulate_virome_data(
 # (avoids unrealistic extrapolation)
 sample_size <- estimate_sample_size(
   power = 0.8,              # Target power
-  effect_size = 1.5,        # Expected fold change
-  n_viruses = 100,          # Number of viral taxa
-  method = "wilcoxon"       # Statistical test to use
+  effect_size = 3.0,        # Large effect size to avoid warnings
+  n_viruses = 50,           # Fewer viral taxa makes it easier to achieve power
+  sparsity = 0.5,           # Low sparsity to increase power
+  method = "t.test"         # Parametric test often has higher power
 )
+# Extract the sample_size value from the returned list
 print(paste("Recommended sample size:", sample_size$sample_size, "samples per group"))
 
 # 3. Calculate power for a specific sample size
 # (handles edge cases and small sample sizes)
 power_result <- calc_virome_power(
   n_samples = 15,           # Samples per group
-  effect_size = 2.0,        # Using a larger effect size to ensure detectable differences
-  n_viruses = 100,          # Number of viral taxa
-  method = "wilcoxon",      # Statistical test
-  sparsity = 0.7,           # Slightly lower sparsity to increase detection
+  effect_size = 3.0,        # Same effect size as sample size estimation
+  n_viruses = 50,           # Same number of viral taxa as sample size estimation
+  method = "t.test",        # Same statistical test as sample size estimation
+  sparsity = 0.5,           # Same sparsity as sample size estimation
   n_sim = 100               # Number of simulations
 )
 
@@ -81,9 +83,11 @@ if (fdr_percent == 0 && power_result$avg_detected > 0) {
 # 4. Plot power curve with smoothing
 # (ensures reliable visualization)
 power_curve <- plot_power_curve(
-  effect_size = 2.0,            # Using a larger effect size to ensure we reach 80% power
-  n_viruses = 100,
-  sample_sizes = c(5, 10, 15, 20, 25, 30, 35, 40)  # Including larger sample sizes
+  effect_size = 3.0,            # Same effect size as previous examples
+  n_viruses = 50,               # Same number of viral taxa as previous examples
+  sparsity = 0.5,               # Same sparsity as previous examples
+  method = "t.test",            # Same statistical test as previous examples
+  sample_sizes = c(5, 10, 15, 20, 25, 30)  # Sufficient range with this effect size
 )
 
 # Safely access the sample size for 80% power
@@ -100,7 +104,8 @@ report <- generate_power_report(
   power_results = power_result,
   sample_size_results = sample_size,
   power_curve = power_curve,
-  output_file = "virome_power_report.html"
+  output_file = "virome_power_report.html",
+  title = "Virome Study Power Analysis Report - High Effect Size Example"
 )
 ```
 
