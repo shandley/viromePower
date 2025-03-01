@@ -99,11 +99,16 @@ generate_stratified_power_report <- function(stratified_power_results,
   
   # Render the report using rmarkdown
   tryCatch({
+    # Pass the data directly to the rendering environment
+    env <- new.env()
+    env$stratified_power_results <- stratified_power_results
+    
     rmarkdown::render(
       input = rmd_file,
       output_file = basename(output_file),
       output_dir = dirname(output_file),
-      quiet = TRUE
+      quiet = TRUE,
+      envir = env
     )
   }, error = function(e) {
     stop(paste0("Error rendering report: ", e$message))
@@ -137,7 +142,7 @@ generate_stratified_report_rmd <- function(stratified_power_results,
                                           has_dplyr = TRUE,
                                           has_tidyr = TRUE) {
   
-  # Extract data for easier use in the report
+  # Keep local reference for building the report
   power_data <- stratified_power_results
   
   # Create the header section
@@ -530,8 +535,17 @@ generate_stratified_report_rmd <- function(stratified_power_results,
     )
   }
   
+  # Get the data setup code
+  data_setup <- c(
+    "```{r data-setup, include=FALSE}",
+    "# Make the input data available to all chunks",
+    "power_data <- stratified_power_results",
+    "```",
+    ""
+  )
+  
   # Combine all sections
-  rmd_content <- c(header, intro, code_section)
+  rmd_content <- c(header, data_setup, intro, code_section)
   
   # Return the complete R markdown content
   return(paste(rmd_content, collapse = "\n"))
