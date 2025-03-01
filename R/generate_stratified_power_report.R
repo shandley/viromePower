@@ -44,17 +44,38 @@ generate_stratified_power_report <- function(stratified_power_results,
     stop("stratified_power_results must be the output from calc_stratified_power()")
   }
   
-  # Check for required packages
-  required_packages <- c("rmarkdown", "ggplot2", "dplyr", "tidyr", "knitr", "kableExtra")
-  missing_packages <- required_packages[!sapply(required_packages, requireNamespace, quietly = TRUE)]
+  # Check for essential packages
+  essential_packages <- c("rmarkdown", "ggplot2", "knitr")
+  missing_essential <- essential_packages[!sapply(essential_packages, requireNamespace, quietly = TRUE)]
   
-  if (length(missing_packages) > 0) {
+  if (length(missing_essential) > 0) {
     stop(paste0(
-      "Missing required packages for report generation: ", 
-      paste(missing_packages, collapse = ", "), 
+      "Missing essential packages for report generation: ", 
+      paste(missing_essential, collapse = ", "), 
       ". Please install them with: install.packages(c('", 
-      paste(missing_packages, collapse = "', '"), 
+      paste(missing_essential, collapse = "', '"), 
       "'))"
+    ))
+  }
+  
+  # Check for optional packages and set flags for conditional features
+  has_kableExtra <- requireNamespace("kableExtra", quietly = TRUE)
+  has_dplyr <- requireNamespace("dplyr", quietly = TRUE)
+  has_tidyr <- requireNamespace("tidyr", quietly = TRUE)
+  
+  # Warn about optional packages
+  optional_missing <- c()
+  if (!has_kableExtra) optional_missing <- c(optional_missing, "kableExtra")
+  if (!has_dplyr) optional_missing <- c(optional_missing, "dplyr")
+  if (!has_tidyr) optional_missing <- c(optional_missing, "tidyr")
+  
+  if (length(optional_missing) > 0) {
+    warning(paste0(
+      "Some optional packages for enhanced report formatting are missing: ", 
+      paste(optional_missing, collapse = ", "), 
+      ". Reports will still be generated with basic formatting. ",
+      "For enhanced formatting, install the missing packages with: ",
+      "install.packages(c('", paste(optional_missing, collapse = "', '"), "'))"
     ))
   }
   
@@ -67,7 +88,10 @@ generate_stratified_power_report <- function(stratified_power_results,
     title = title,
     include_code = include_code,
     custom_css = custom_css,
-    output_file = output_file
+    output_file = output_file,
+    has_kableExtra = has_kableExtra,
+    has_dplyr = has_dplyr,
+    has_tidyr = has_tidyr
   )
   
   # Write the content to the temporary file
@@ -98,6 +122,9 @@ generate_stratified_power_report <- function(stratified_power_results,
 #' @param include_code Boolean indicating whether to include R code
 #' @param custom_css Optional custom CSS for styling
 #' @param output_file File path for the output HTML report
+#' @param has_kableExtra Boolean indicating whether kableExtra is available
+#' @param has_dplyr Boolean indicating whether dplyr is available
+#' @param has_tidyr Boolean indicating whether tidyr is available
 #'
 #' @return A character string with the R markdown content
 #' @keywords internal
@@ -105,7 +132,10 @@ generate_stratified_report_rmd <- function(stratified_power_results,
                                           title,
                                           include_code,
                                           custom_css,
-                                          output_file) {
+                                          output_file,
+                                          has_kableExtra = TRUE,
+                                          has_dplyr = TRUE,
+                                          has_tidyr = TRUE) {
   
   # Extract data for easier use in the report
   power_data <- stratified_power_results
@@ -127,10 +157,10 @@ generate_stratified_report_rmd <- function(stratified_power_results,
     "```{r setup, include=FALSE}",
     "knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)",
     "library(ggplot2)",
-    "library(dplyr)",
-    "library(tidyr)",
     "library(knitr)",
-    "library(kableExtra)",
+    if (has_dplyr) "library(dplyr)" else "# dplyr not available",
+    if (has_tidyr) "library(tidyr)" else "# tidyr not available",
+    if (has_kableExtra) "library(kableExtra)" else "# kableExtra not available",
     "```",
     "",
     "```{css, echo=FALSE}",
@@ -203,14 +233,26 @@ generate_stratified_report_rmd <- function(stratified_power_results,
     ")",
     "",
     "# Display the stratum characteristics table",
-    "kable(strata_df, col.names = c('Stratum', 'Sample Size (per group)', ",
-    "                              'Effect Size', 'Weight', 'Sparsity', ",
-    "                              'Dispersion', 'Power (%)'),",
-    "      digits = c(0, 0, 2, 2, 2, 2, 1),",
-    "      caption = 'Characteristics and Power by Stratum') %>%",
-    "  kable_styling(bootstrap_options = 'striped', full_width = FALSE,",
-    "                position = 'center', row_label_position = 'c') %>%",
-    "  column_spec(7, background = '#e6f3ff')",
+    if (has_kableExtra) {
+      c(
+        "kable(strata_df, col.names = c('Stratum', 'Sample Size (per group)', ",
+        "                              'Effect Size', 'Weight', 'Sparsity', ",
+        "                              'Dispersion', 'Power (%)'),",
+        "      digits = c(0, 0, 2, 2, 2, 2, 1),",
+        "      caption = 'Characteristics and Power by Stratum') %>%",
+        "  kable_styling(bootstrap_options = 'striped', full_width = FALSE,",
+        "                position = 'center', row_label_position = 'c') %>%",
+        "  column_spec(7, background = '#e6f3ff')"
+      )
+    } else {
+      c(
+        "kable(strata_df, col.names = c('Stratum', 'Sample Size (per group)', ",
+        "                              'Effect Size', 'Weight', 'Sparsity', ",
+        "                              'Dispersion', 'Power (%)'),",
+        "      digits = c(0, 0, 2, 2, 2, 2, 1),",
+        "      caption = 'Characteristics and Power by Stratum')"
+      )
+    },
     "```",
     "",
     "The study design incorporates ", length(power_data$parameters$strata_sizes), 
@@ -325,11 +367,20 @@ generate_stratified_report_rmd <- function(stratified_power_results,
     ")",
     "",
     "# Display the parameters table",
-    "kable(param_df, col.names = c('Parameter', 'Value'),",
-    "      caption = 'Analysis Parameters') %>%",
-    "  kable_styling(bootstrap_options = c('striped', 'hover'), full_width = FALSE,",
-    "                position = 'center') %>%",
-    "  column_spec(1, bold = TRUE)",
+    if (has_kableExtra) {
+      c(
+        "kable(param_df, col.names = c('Parameter', 'Value'),",
+        "      caption = 'Analysis Parameters') %>%",
+        "  kable_styling(bootstrap_options = c('striped', 'hover'), full_width = FALSE,",
+        "                position = 'center') %>%",
+        "  column_spec(1, bold = TRUE)"
+      )
+    } else {
+      c(
+        "kable(param_df, col.names = c('Parameter', 'Value'),",
+        "      caption = 'Analysis Parameters')"
+      )
+    },
     "```",
     "",
     "## False Discovery Rate Analysis",

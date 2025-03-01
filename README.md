@@ -165,6 +165,7 @@ stratified_power <- calc_stratified_power(
 #   Stratum 2 (n=30, effect=4.5): 58.0%
 
 # Generate comprehensive HTML report with visualizations
+# Note: For enhanced formatting, install optional package: install.packages("kableExtra")
 report_path <- generate_stratified_power_report(
   stratified_power_results = stratified_power,
   output_file = "stratified_power_report.html",
