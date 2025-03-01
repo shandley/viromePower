@@ -145,6 +145,25 @@ print(paste("Effective sample size:", round(stratified_power$effective_sample_si
             "(actual:", sum(stratified_power$parameters$strata_sizes) * 2, "samples)"))
 # Example output: "Effective sample size: 19.2 (actual: 70 samples)"
 
+# High-power stratified analysis example
+stratified_power <- calc_stratified_power(
+  strata_sizes = c(25, 30),         # Larger sample sizes
+  effect_sizes = c(4.0, 4.5),       # Larger effect sizes
+  strata_weights = c(0.4, 0.6),     # Importance weights for strata
+  n_viruses = 15,                   # Fewer viruses (less multiple testing burden)
+  clustering_factor = 0.02,         # Lower clustering factor
+  sparsity = 0.5,                   # Less sparsity
+  dispersion = 1.2,                 # Lower dispersion (less variability)
+  stratification_vars = "geography",
+  method = "mixed_effects"
+)
+
+# Example output:
+# Overall Power: 97.0%
+# Power by Stratum:
+#   Stratum 1 (n=25, effect=4.0): 39.0%
+#   Stratum 2 (n=30, effect=4.5): 58.0%
+
 # Generate comprehensive HTML report with visualizations
 report_path <- generate_stratified_power_report(
   stratified_power_results = stratified_power,
