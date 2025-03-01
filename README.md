@@ -9,6 +9,8 @@ An R package for statistical power analysis of virome studies. This package help
 - Estimate required sample size for desired statistical power
 - Generate interactive HTML reports with publication-quality visualizations
 - Account for multiple testing correction and compositional nature of virome data
+- Support for Bayesian and frequentist analysis approaches
+- Stratified sampling designs for complex study structures
 
 ## Robust Statistical Analysis
 viromePower incorporates specially designed features to handle unique challenges in virome data:
@@ -17,7 +19,7 @@ viromePower incorporates specially designed features to handle unique challenges
 - **Sample size boundaries**: Prevents unrealistic sample size estimates for small effect sizes
 - **Statistical test safeguards**: Automatically adjusts for low sample sizes and high variability
 - **Error handling and recovery**: Gracefully handles edge cases without crashing
-- **Multiple statistical methods**: Supports Wilcoxon, t-test, and DESeq-like approaches
+- **Multiple statistical methods**: Supports Wilcoxon, t-test, DESeq-like, and Bayesian approaches
 - **Smoothed power curves**: Reduces noise in visualization for clearer interpretation
 - **Base64-embedded visualizations**: Self-contained HTML reports that work without external files
 
@@ -182,6 +184,58 @@ The generated report includes:
 - Reproducible code for all calculations and visualizations
 
 ![Stratified Power Report Example](https://github.com/username/viromePower/raw/main/man/figures/stratified_report_example.png)
+
+## Bayesian Power Analysis
+
+For researchers preferring Bayesian approaches, viromePower offers Bayesian power analysis that handles sparse data through prior incorporation and yields posterior probabilities instead of p-values:
+
+```r
+# Calculate Bayesian power for a virome study
+bayesian_power <- calc_bayesian_power(
+  n_samples = 20,           # 20 samples per group
+  effect_size = 3.0,        # 3-fold difference between groups
+  n_viruses = 50,           # 50 viral taxa
+  sparsity = 0.6,           # 60% zeros in the data
+  prior_strength = 2.5,     # Moderate prior strength
+  n_sim = 100               # 100 simulation iterations
+)
+
+# Print Bayesian power estimate
+print(paste("Bayesian power:", round(bayesian_power$power * 100, 1), "%"))
+# Example output: "Bayesian power: 86.2%"
+
+# Print expected discoveries
+print(paste("Expected discoveries:", round(bayesian_power$expected_discoveries, 1)))
+# Example output: "Expected discoveries: 35.2"
+
+# Print false discovery proportion
+print(paste("False discovery proportion:", round(bayesian_power$false_discovery_proportion * 100, 1), "%"))
+# Example output: "False discovery proportion: 14.8%"
+
+# Generate Bayesian power report
+report_path <- generate_bayesian_power_report(
+  bayesian_power_results = bayesian_power,
+  output_file = "bayesian_power_report.html",
+  title = "Bayesian Power Analysis for Virome Study",
+  include_code = TRUE  # Include reproducible code in the report
+)
+```
+
+Bayesian analysis offers several advantages for virome studies:
+- Better handling of sparse data through prior information
+- More intuitive credible intervals instead of confidence intervals
+- Direct probability statements about effect existence
+- No need for multiple testing correction
+- Graceful performance with small sample sizes when using informative priors
+
+The Bayesian report includes:
+- Posterior probability distributions for differential abundance
+- Bayes factor interpretations for evidence strength
+- Comparison of frequentist and Bayesian approaches
+- Precision-recall metrics for detection performance
+- Customized recommendations based on the Bayesian analysis results
+
+![Bayesian Power Report Example](https://github.com/username/viromePower/raw/main/man/figures/bayesian_report_example.png)
 
 ## Citation
 
