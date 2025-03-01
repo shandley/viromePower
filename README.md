@@ -56,13 +56,24 @@ print(paste("Recommended sample size:", sample_size$sample_size, "samples per gr
 # (handles edge cases and small sample sizes)
 power_result <- calc_virome_power(
   n_samples = 15,           # Samples per group
-  effect_size = 1.5,        # Expected fold change
+  effect_size = 2.0,        # Using a larger effect size to ensure detectable differences
   n_viruses = 100,          # Number of viral taxa
   method = "wilcoxon",      # Statistical test
+  sparsity = 0.7,           # Slightly lower sparsity to increase detection
   n_sim = 100               # Number of simulations
 )
-print(paste("Power:", round(power_result$power * 100, 1), "%"))
-print(paste("False discovery rate:", round(power_result$fdr * 100, 1), "%"))
+
+# Safely print power and false discovery rate
+power_percent <- round(power_result$power * 100, 1)
+print(paste("Power:", power_percent, "%"))
+
+# Check if FDR is properly calculated (not NA)
+if (!is.na(power_result$fdr)) {
+  fdr_percent <- round(power_result$fdr * 100, 1)
+  print(paste("False discovery rate:", fdr_percent, "%"))
+} else {
+  print("False discovery rate: Not calculable (no differential features detected)")
+}
 
 # 4. Plot power curve with smoothing
 # (ensures reliable visualization)
