@@ -1,0 +1,241 @@
+#' Calculate Power for Viral Diversity Analysis
+#'
+#' Calculates statistical power for detecting differences in alpha and beta diversity 
+#' measures between groups in a virome study, using simulation-based approach.
+#'
+#' @param n_samples Number of samples per group
+#' @param effect_size Expected effect size (for alpha diversity: Cohen's d, for beta: PERMANOVA R2)
+#' @param n_viruses Number of viral taxa in the dataset
+#' @param alpha Significance level (default: 0.05)
+#' @param sparsity Proportion of zeros in the data (default: 0.8)
+#' @param dispersion Dispersion parameter for viral abundance (default: 2)
+#' @param diversity_measure Type of diversity to analyze: "shannon", "simpson", "richness", "evenness", "bray", "jaccard", or "unifrac" (default: "shannon")
+#' @param n_sim Number of simulations for Monte Carlo estimation (default: 100)
+#'
+#' @return A list containing power estimates, simulation results, and parameters
+#' @export
+#'
+#' @examples
+#' # Calculate power for Shannon diversity
+#' power_shannon <- calc_viral_diversity_power(n_samples = 15, effect_size = 1.2, 
+#'                                            n_viruses = 200, diversity_measure = "shannon")
+#'                                            
+#' # Calculate power for beta diversity (Bray-Curtis)
+#' power_beta <- calc_viral_diversity_power(n_samples = 20, effect_size = 0.15, 
+#'                                         n_viruses = 300, diversity_measure = "bray")
+calc_viral_diversity_power <- function(n_samples, effect_size, n_viruses,
+                                      alpha = 0.05, sparsity = 0.8, dispersion = 2,
+                                      diversity_measure = "shannon", n_sim = 100) {
+  # Validate input parameters
+  if (n_samples < 3) {
+    stop("n_samples must be at least 3 per group")
+  }
+  if (effect_size <= 0) {
+    stop("effect_size must be positive")
+  }
+  if (alpha <= 0 || alpha >= 1) {
+    stop("alpha must be between 0 and 1")
+  }
+  
+  valid_measures <- c("shannon", "simpson", "richness", "evenness", "bray", "jaccard", "unifrac")
+  if (!(diversity_measure %in% valid_measures)) {
+    stop("diversity_measure must be one of: ", paste(valid_measures, collapse = ", "))
+  }
+  
+  # Determine if this is alpha or beta diversity
+  is_beta <- diversity_measure %in% c("bray", "jaccard", "unifrac")
+  
+  # Initialize result storage
+  significant_tests <- numeric(n_sim)
+  
+  # Run simulations with error handling
+  for (i in 1:n_sim) {
+    # Simulate virome data with appropriate effect size based on diversity type
+    sim_data <- try({
+      # Make sure parameters are reasonable
+      adjusted_n_samples <- max(3, n_samples)  # Ensure minimum 3 samples per group
+      
+      # For beta diversity, the effect size is in terms of between-group distance
+      # For alpha diversity, we implement as a mean difference in diversity scores
+      if (is_beta) {
+        # Beta diversity - we implement by creating structured differences 
+        # between groups with the given effect size
+        simulate_virome_data(
+          n_samples = adjusted_n_samples * 2,  # Total samples (both groups)
+          n_viruses = n_viruses,
+          sparsity = sparsity,
+          dispersion = dispersion,
+          # For beta, effect_size controls the proportion of taxa that differ between groups
+          effect_size = 1 + effect_size * 10  # Scale effect size for beta diversity
+        )
+      } else {
+        # Alpha diversity - implement by changing both abundance patterns and richness
+        simulate_virome_data(
+          n_samples = adjusted_n_samples * 2,  # Total samples (both groups)
+          n_viruses = n_viruses,
+          sparsity = sparsity - (0.05 * effect_size), # Less zeros in one group = higher diversity
+          dispersion = dispersion,
+          effect_size = 1 + effect_size * 0.2  # Smaller effect on abundance
+        )
+      }
+    }, silent = TRUE)
+    
+    # If simulation failed, create minimal valid data
+    if (inherits(sim_data, "try-error")) {
+      warning("Simulation failed, using minimal data structure")
+      sim_data <- list(
+        counts = matrix(rpois(n_viruses * n_samples * 2, lambda = 1), 
+                      nrow = n_viruses, ncol = n_samples * 2),
+        metadata = data.frame(
+          sample_id = paste0("sample_", 1:(n_samples * 2)),
+          group = rep(c("A", "B"), each = n_samples)
+        ),
+        diff_taxa = sample(n_viruses, max(1, round(n_viruses * 0.1)))
+      )
+    }
+    
+    # Extract data
+    counts <- sim_data$counts
+    metadata <- sim_data$metadata
+    
+    # Transpose counts for diversity calculations (samples as rows)
+    counts_t <- t(counts)
+    
+    # Apply the appropriate diversity measure and test
+    if (!is_beta) {
+      # Alpha diversity measures
+      diversity_values <- numeric(nrow(metadata))
+      
+      for (j in 1:nrow(metadata)) {
+        sample_counts <- counts_t[j, ]
+        
+        # Remove taxa with zero counts
+        nonzero_counts <- sample_counts[sample_counts > 0]
+        
+        if (length(nonzero_counts) == 0) {
+          # No non-zero counts, set diversity to 0
+          diversity_values[j] <- 0
+          next
+        }
+        
+        # Calculate relative abundances for diversity indices
+        relative_abundance <- nonzero_counts / sum(nonzero_counts)
+        
+        # Calculate the requested alpha diversity measure
+        if (diversity_measure == "shannon") {
+          # Shannon index: -sum(p_i * log(p_i))
+          diversity_values[j] <- -sum(relative_abundance * log(relative_abundance))
+        } else if (diversity_measure == "simpson") {
+          # Simpson index: 1 - sum(p_i^2)
+          diversity_values[j] <- 1 - sum(relative_abundance^2)
+        } else if (diversity_measure == "richness") {
+          # Species richness: number of non-zero taxa
+          diversity_values[j] <- length(nonzero_counts)
+        } else if (diversity_measure == "evenness") {
+          # Pielou's evenness: Shannon / log(richness)
+          shannon <- -sum(relative_abundance * log(relative_abundance))
+          richness <- length(nonzero_counts)
+          diversity_values[j] <- shannon / log(richness)
+        }
+      }
+      
+      # Compare alpha diversity between groups using t-test or Wilcoxon
+      group_a <- diversity_values[metadata$group == "A"]
+      group_b <- diversity_values[metadata$group == "B"]
+      
+      # Use t-test if data appears normal-ish, otherwise Wilcoxon
+      test_result <- tryCatch({
+        if (n_samples >= 30 || 
+            (stats::shapiro.test(group_a)$p.value > 0.05 && 
+             stats::shapiro.test(group_b)$p.value > 0.05)) {
+          # For larger samples or normal distributions, use t-test
+          stats::t.test(group_a, group_b)
+        } else {
+          # Otherwise use the non-parametric Wilcoxon test
+          stats::wilcox.test(group_a, group_b, exact = FALSE)
+        }
+      }, error = function(e) {
+        # Handle any testing errors
+        return(list(p.value = 1))
+      })
+      
+      # Record if test was significant
+      significant_tests[i] <- test_result$p.value < alpha
+      
+    } else {
+      # Beta diversity measures
+      # First, calculate distance matrix based on chosen measure
+      
+      if (diversity_measure == "bray") {
+        # Bray-Curtis dissimilarity
+        dist_matrix <- as.matrix(vegan::vegdist(counts_t, method = "bray"))
+      } else if (diversity_measure == "jaccard") {
+        # Jaccard distance (based on presence/absence)
+        binary_counts <- ifelse(counts_t > 0, 1, 0)
+        dist_matrix <- as.matrix(vegan::vegdist(binary_counts, method = "jaccard"))
+      } else if (diversity_measure == "unifrac") {
+        # Simple UniFrac-like distance (without phylogeny)
+        # For true UniFrac, would need phylogenetic tree
+        # This is a simplified version that weighs by abundance
+        binary_counts <- ifelse(counts_t > 0, 1, 0)
+        dist_matrix <- as.matrix(vegan::vegdist(binary_counts, method = "jaccard"))
+        
+        # Modify distance by abundance weighting (similar to weighted UniFrac)
+        for (j in 1:nrow(dist_matrix)) {
+          for (k in 1:ncol(dist_matrix)) {
+            if (j != k) {
+              # Weight by abundance
+              abundance_weight <- sum(abs(counts_t[j,] - counts_t[k,])) / sum(counts_t[j,] + counts_t[k,])
+              dist_matrix[j,k] <- dist_matrix[j,k] * abundance_weight
+            }
+          }
+        }
+      }
+      
+      # Run PERMANOVA (adonis) to test for group differences
+      test_result <- tryCatch({
+        # Create formula for PERMANOVA
+        group_factor <- as.factor(metadata$group)
+        
+        # Run PERMANOVA using vegan's adonis function
+        permanova <- vegan::adonis2(dist_matrix ~ group_factor, permutations = 999)
+        
+        # Extract p-value from first row (group effect)
+        permanova_p <- permanova["group_factor", "Pr(>F)"]
+        
+        # If NA, set to 1
+        if (is.na(permanova_p)) permanova_p <- 1
+        
+        permanova_p
+      }, error = function(e) {
+        # Handle any testing errors
+        return(1)
+      })
+      
+      # Record if test was significant
+      significant_tests[i] <- test_result < alpha
+    }
+  }
+  
+  # Calculate power (proportion of significant tests)
+  power <- mean(significant_tests)
+  
+  # Make sure power is in valid range [0, 1]
+  power <- max(0, min(1, power))
+  
+  # Return results
+  list(
+    power = power,
+    significant_tests = significant_tests,
+    parameters = list(
+      n_samples = n_samples,
+      effect_size = effect_size,
+      n_viruses = n_viruses,
+      alpha = alpha,
+      sparsity = sparsity,
+      dispersion = dispersion,
+      diversity_measure = diversity_measure,
+      n_sim = n_sim
+    )
+  )
+}

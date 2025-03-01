@@ -7,7 +7,9 @@ Authors@R:
 Description: Provides tools for power analysis in virome studies. This package 
     helps researchers determine optimal sample sizes, estimate statistical power,
     and design robust virome studies accounting for high sparsity, low abundance,
-    and other unique characteristics of viral metagenomic data.
+    and other unique characteristics of viral metagenomic data. Includes methods
+    for standard power analysis, stratified study designs, Bayesian approaches,
+    and viral diversity metrics (alpha and beta diversity).
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)

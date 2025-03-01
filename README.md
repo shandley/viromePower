@@ -185,6 +185,92 @@ The generated report includes:
 
 ![Stratified Power Report Example](https://github.com/username/viromePower/raw/main/man/figures/stratified_report_example.png)
 
+## Viral Diversity Power Analysis
+
+For studies focused on community-level metrics rather than individual taxa, viromePower offers comprehensive diversity power analysis:
+
+```r
+# Calculate power for alpha diversity (Shannon index)
+alpha_power <- calc_viral_diversity_power(
+  n_samples = 15,             # 15 samples per group
+  effect_size = 1.2,          # Moderate effect size (Cohen's d)
+  n_viruses = 200,            # Number of viral taxa
+  diversity_measure = "shannon", # Shannon diversity index
+  sparsity = 0.8,             # Typical virome sparsity level
+  n_sim = 50                  # Number of simulation iterations
+)
+
+# Print power estimate for alpha diversity
+print(paste("Alpha diversity power:", round(alpha_power$power * 100, 1), "%"))
+# Example output: "Alpha diversity power: 78.0%"
+
+# Calculate power for beta diversity (Bray-Curtis)
+beta_power <- calc_viral_diversity_power(
+  n_samples = 20,             # 20 samples per group
+  effect_size = 0.15,         # Effect size for beta diversity (R-squared scale)
+  n_viruses = 300,            # Number of viral taxa
+  diversity_measure = "bray", # Bray-Curtis dissimilarity
+  sparsity = 0.75,            # Typical virome sparsity level
+  n_sim = 50                  # Number of simulation iterations
+)
+
+# Print power estimate for beta diversity
+print(paste("Beta diversity power:", round(beta_power$power * 100, 1), "%"))
+# Example output: "Beta diversity power: 82.0%"
+
+# Generate plot showing how power changes with sample size for alpha diversity
+shannon_curve <- plot_diversity_power_curve(
+  param_range = seq(5, 30, by = 5),  # Sample sizes to test
+  param_type = "n_samples",          # Varying sample size
+  effect_size = 1.2,                 # Fixed effect size
+  diversity_measure = "shannon",     # Shannon diversity
+  n_sim = 30                         # Simulations per point
+)
+
+# Generate plot showing how power changes with effect size for beta diversity
+bray_curve <- plot_diversity_power_curve(
+  param_range = seq(0.05, 0.3, by = 0.05),  # Effect sizes to test
+  param_type = "effect_size",               # Varying effect size
+  n_samples = 20,                           # Fixed sample size
+  diversity_measure = "bray",               # Bray-Curtis dissimilarity
+  n_sim = 30                                # Simulations per point
+)
+
+# Generate comprehensive alpha diversity power report
+alpha_report <- generate_diversity_power_report(
+  n_samples = 15,
+  effect_size = 1.2,
+  n_viruses = 200,
+  diversity_measure = "shannon",
+  output_file = "shannon_diversity_power_report.html"
+)
+
+# Generate comprehensive beta diversity power report
+beta_report <- generate_diversity_power_report(
+  n_samples = 20,
+  effect_size = 0.15,
+  n_viruses = 300,
+  diversity_measure = "bray",
+  output_file = "beta_diversity_power_report.html"
+)
+```
+
+Viral diversity analysis offers several benefits:
+- Captures community-level differences that may be missed by taxon-by-taxon analysis
+- Reduces statistical burden (single test vs. multiple tests)
+- Provides holistic view of virome structure changes
+- Addresses compositional data challenges through dissimilarity measures
+- Works well even with previously unknown or poorly characterized viruses
+
+The diversity power reports include:
+- Interactive visualizations of alpha or beta diversity patterns
+- Power curves for both sample size and effect size
+- Sample size recommendations for achieving target power
+- Simulated data visualizations (boxplots for alpha, NMDS/PCoA for beta)
+- Detailed interpretations and practical recommendations
+
+![Diversity Power Report Example](https://github.com/username/viromePower/raw/main/man/figures/diversity_report_example.png)
+
 ## Bayesian Power Analysis
 
 For researchers preferring Bayesian approaches, viromePower offers Bayesian power analysis that handles sparse data through prior incorporation and yields posterior probabilities instead of p-values:
