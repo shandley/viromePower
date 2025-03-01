@@ -92,7 +92,7 @@ print(paste("Sample size for 80% power:", round(sample_size_80, 1)))
 # (embedded visualizations and interactive elements)
 report <- generate_power_report(
   power_results = power_result,
-  sample_size_results = sample_size,
+  sample_size_results = sample_size_result,
   power_curve = power_curve,
   output_file = "virome_power_report.html",
   title = "Virome Study Power Analysis Report - High Effect Size Example"
