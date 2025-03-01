@@ -132,20 +132,29 @@ calc_bayesian_power <- function(n_samples,
   # Main simulation loop
   for (i in 1:n_sim) {
     # Generate simulated data
+    # Create groups vector for balanced design
+    groups <- rep(c("A", "B"), each = n_samples)
+    
+    # Split viral taxa into effect and non-effect groups
+    diff_indices <- effect_indices
+    
+    # Simulate virome data
     sim_data <- simulate_virome_data(
       n_samples = n_samples * 2,  # Total samples across both groups
       n_viruses = n_viruses,
-      group_effect = TRUE,
       effect_size = effect_size,
-      effect_indices = effect_indices,
       sparsity = sparsity,
-      dispersion = dispersion
+      dispersion = dispersion,
+      groups = groups
     )
+    
+    # Replace the differentially abundant taxa with our controlled set
+    sim_data$diff_taxa <- diff_indices
     
     # Perform Bayesian analysis
     bayes_result <- analyze_bayesian(
       counts = sim_data$counts,
-      groups = sim_data$groups,
+      groups = sim_data$metadata$group,
       prior_strength = prior_strength,
       credible_interval = credible_interval
     )
@@ -153,7 +162,7 @@ calc_bayesian_power <- function(n_samples,
     # Evaluate results against true effects
     eval_result <- evaluate_bayesian_results(
       bayes_result = bayes_result,
-      effect_indices = effect_indices,
+      effect_indices = sim_data$diff_taxa,
       posterior_prob_threshold = posterior_prob_threshold,
       fold_change_threshold = fold_change_threshold
     )
