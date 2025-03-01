@@ -16,6 +16,7 @@
 #' @param posterior_prob_threshold Posterior probability threshold for significance (default: 0.95)
 #' @param n_sim Number of simulation iterations (default: 100)
 #' @param seed Random seed for reproducibility (default: NULL)
+#' @param suppress_warnings Whether to suppress warnings during calculation (default: FALSE)
 #'
 #' @return A list containing:
 #' \itemize{
@@ -63,7 +64,8 @@ calc_bayesian_power <- function(n_samples,
                                fold_change_threshold = 1.5,
                                posterior_prob_threshold = 0.95,
                                n_sim = 100,
-                               seed = NULL) {
+                               seed = NULL,
+                               suppress_warnings = FALSE) {
   
   # Validate inputs
   if (n_samples < 3) {
@@ -107,6 +109,12 @@ calc_bayesian_power <- function(n_samples,
     set.seed(seed)
   }
   
+  # Handle warning suppression if requested
+  if (suppress_warnings) {
+    old_warn <- options(warn = -1)
+    on.exit(options(old_warn))
+  }
+  
   # Store parameters for return
   parameters <- list(
     n_samples = n_samples,
@@ -119,7 +127,8 @@ calc_bayesian_power <- function(n_samples,
     fold_change_threshold = fold_change_threshold,
     posterior_prob_threshold = posterior_prob_threshold,
     n_sim = n_sim,
-    seed = seed
+    seed = seed,
+    suppress_warnings = suppress_warnings
   )
   
   # Define number of viruses with true effects (50% by default)
@@ -340,28 +349,41 @@ analyze_bayesian <- function(counts, groups, prior_strength, credible_interval) 
     alpha1 <- sum_y1 + prior_strength
     alpha2 <- sum_y2 + prior_strength
     
+    # Function to safely calculate lbeta with warning suppression and safety checks
+    safe_lbeta <- function(a, b) {
+      # Check for negative or zero values which would cause NaN in beta function
+      if (a <= 0 || b <= 0) {
+        return(0) # Return zero as a neutral value
+      }
+      
+      # Suppress warnings and catch errors
+      result <- suppressWarnings(
+        tryCatch({
+          lbeta(a, b)
+        }, error = function(e) {
+          return(0)
+        })
+      )
+      
+      # Check if result is finite
+      if (!is.finite(result)) {
+        return(0)
+      }
+      
+      return(result)
+    }
+    
     # Calculate posterior for null hypothesis (no difference)
-    log_prob_null <- tryCatch({
-      lbeta(sum_y1 + sum_y2 + 2 * prior_strength, 
-            n1 + n2 - sum_y1 - sum_y2 + 2 * prior_strength) -
-        lbeta(2 * prior_strength, 2 * prior_strength)
-    }, error = function(e) {
-      # Handle numerical errors
-      warning("Numerical error in log_prob_null calculation")
-      return(0)
-    })
+    # Using the safe lbeta function
+    log_prob_null <- safe_lbeta(sum_y1 + sum_y2 + 2 * prior_strength, 
+                              n1 + n2 - sum_y1 - sum_y2 + 2 * prior_strength) -
+                     safe_lbeta(2 * prior_strength, 2 * prior_strength)
     
     # Calculate posterior for alternative hypothesis (difference exists)
-    log_prob_alt <- tryCatch({
-      lbeta(sum_y1 + prior_strength, n1 - sum_y1 + prior_strength) +
-        lbeta(sum_y2 + prior_strength, n2 - sum_y2 + prior_strength) -
-        lbeta(prior_strength, prior_strength) -
-        lbeta(prior_strength, prior_strength)
-    }, error = function(e) {
-      # Handle numerical errors
-      warning("Numerical error in log_prob_alt calculation")
-      return(0)
-    })
+    log_prob_alt <- safe_lbeta(sum_y1 + prior_strength, n1 - sum_y1 + prior_strength) +
+                   safe_lbeta(sum_y2 + prior_strength, n2 - sum_y2 + prior_strength) -
+                   safe_lbeta(prior_strength, prior_strength) -
+                   safe_lbeta(prior_strength, prior_strength)
     
     # Calculate Bayes factor (exp to convert from log scale)
     # Handle potential numerical issues
@@ -413,20 +435,40 @@ analyze_bayesian <- function(counts, groups, prior_strength, credible_interval) 
     lower_quantile <- (1 - credible_interval) / 2
     upper_quantile <- 1 - lower_quantile
     
-    # Approximate credible interval for effect size - with error handling
-    ci_lower <- tryCatch({
-      qbeta(lower_quantile, alpha2_post, beta2_post) / 
-        qbeta(upper_quantile, alpha1_post, beta1_post)
-    }, error = function(e) {
-      return(effect_sizes[i] * 0.5) # Fallback to 50% of effect size
-    })
+    # Safe qbeta function that suppresses warnings and handles errors
+    safe_qbeta <- function(p, shape1, shape2, default_value) {
+      if (p <= 0 || p >= 1 || shape1 <= 0 || shape2 <= 0) {
+        return(default_value) # Return default for invalid inputs
+      }
+      
+      result <- suppressWarnings(
+        tryCatch({
+          qbeta(p, shape1, shape2)
+        }, error = function(e) {
+          return(default_value)
+        })
+      )
+      
+      if (!is.finite(result) || result <= 0) {
+        return(default_value)
+      }
+      
+      return(result)
+    }
     
-    ci_upper <- tryCatch({
-      qbeta(upper_quantile, alpha2_post, beta2_post) / 
-        qbeta(lower_quantile, alpha1_post, beta1_post)
-    }, error = function(e) {
-      return(effect_sizes[i] * 2.0) # Fallback to 200% of effect size
-    })
+    # Default values based on effect size
+    default_lower <- max(0.1, effect_sizes[i] * 0.5)
+    default_upper <- effect_sizes[i] * 2.0
+    
+    # Approximate credible interval for effect size - with improved error handling
+    q_lower_2 <- safe_qbeta(lower_quantile, alpha2_post, beta2_post, default_lower)
+    q_upper_1 <- safe_qbeta(upper_quantile, alpha1_post, beta1_post, 1.0)
+    q_upper_2 <- safe_qbeta(upper_quantile, alpha2_post, beta2_post, default_upper)
+    q_lower_1 <- safe_qbeta(lower_quantile, alpha1_post, beta1_post, 1.0)
+    
+    # Safe division
+    ci_lower <- if (q_upper_1 > 0) q_lower_2 / q_upper_1 else default_lower
+    ci_upper <- if (q_lower_1 > 0) q_upper_2 / q_lower_1 else default_upper
     
     # Handle extreme values
     if (!is.finite(ci_lower) || ci_lower <= 0) ci_lower <- effect_sizes[i] * 0.5

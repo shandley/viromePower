@@ -15,7 +15,8 @@ calc_bayesian_power(
   fold_change_threshold = 1.5,
   posterior_prob_threshold = 0.95,
   n_sim = 100,
-  seed = NULL
+  seed = NULL,
+  suppress_warnings = FALSE
 )
 }
 \arguments{
@@ -40,6 +41,8 @@ calc_bayesian_power(
 \item{n_sim}{Number of simulation iterations (default: 100)}
 
 \item{seed}{Random seed for reproducibility (default: NULL)}
+
+\item{suppress_warnings}{Whether to suppress warnings during calculation (default: FALSE)}
 }
 \value{
 A list containing:
