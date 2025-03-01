@@ -6,7 +6,7 @@
 #' @param n_samples Number of samples per group to analyze
 #' @param effect_size Expected effect size between groups
 #' @param n_viruses Number of viral taxa in the dataset
-#' @param diversity_measure Type of diversity to analyze: "shannon", "simpson", "richness", "evenness", "chao1", "ace", "inv_simpson", "fisher_alpha", "bray", "jaccard", or "unifrac" (default: "shannon")
+#' @param diversity_measure Type of diversity to analyze: "shannon", "simpson", "richness", "evenness", "chao1", "ace", "inv_simpson", "fisher_alpha", "goods_coverage", "berger_parker", "bray", "jaccard", or "unifrac" (default: "shannon")
 #' @param alpha Significance level (default: 0.05)
 #' @param sparsity Proportion of zeros in the data (default: 0.8)
 #' @param dispersion Dispersion parameter for viral abundance (default: 2)
@@ -42,6 +42,24 @@
 #'   n_viruses = 250,
 #'   diversity_measure = "ace",
 #'   output_file = "ace_power_report.html"
+#' )
+#'
+#' # Generate a power report for Good's coverage
+#' goods_report <- generate_diversity_power_report(
+#'   n_samples = 20,
+#'   effect_size = 1.2,
+#'   n_viruses = 200,
+#'   diversity_measure = "goods_coverage",
+#'   output_file = "goods_coverage_report.html"
+#' )
+#'
+#' # Generate a power report for Berger-Parker dominance index
+#' bp_report <- generate_diversity_power_report(
+#'   n_samples = 15,
+#'   effect_size = 1.0,
+#'   n_viruses = 150,
+#'   diversity_measure = "berger_parker",
+#'   output_file = "berger_parker_report.html"
 #' )
 #'
 #' # Generate a power report for Bray-Curtis dissimilarity
@@ -133,6 +151,8 @@ generate_diversity_power_report <- function(n_samples, effect_size, n_viruses,
                            chao1 = "Chao1 Richness Estimator",
                            ace = "ACE Richness Estimator",
                            fisher_alpha = "Fisher's Alpha",
+                           goods_coverage = "Good's Coverage",
+                           berger_parker = "Berger-Parker Dominance Index",
                            bray = "Bray-Curtis Dissimilarity",
                            jaccard = "Jaccard Distance",
                            unifrac = "UniFrac Distance",
@@ -418,7 +438,11 @@ generate_diversity_power_report <- function(n_samples, effect_size, n_viruses,
                                                          "richness using abundance data to estimate rare species that may have been missed in sampling.",
                                                          ifelse(diversity_measure == "fisher_alpha", 
                                                                 "the relationship between species and individuals using a logarithmic distribution model.",
-                                                                "aspects of viral community structure within samples.")))))))),
+                                                                ifelse(diversity_measure == "goods_coverage", 
+                                                                       "the proportion of the community represented by the observed species, based on singletons.",
+                                                                       ifelse(diversity_measure == "berger_parker", 
+                                                                              "the proportional abundance of the most dominant species in the community.",
+                                                                              "aspects of viral community structure within samples.")))))))))),
         "\n\n",
         
         "Effect sizes for alpha diversity are typically expressed as standardized mean differences (Cohen's d).",

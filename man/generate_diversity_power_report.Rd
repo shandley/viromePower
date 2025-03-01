@@ -24,7 +24,7 @@ generate_diversity_power_report(
 
 \item{n_viruses}{Number of viral taxa in the dataset}
 
-\item{diversity_measure}{Type of diversity to analyze: "shannon", "simpson", "richness", "evenness", "chao1", "ace", "inv_simpson", "fisher_alpha", "bray", "jaccard", or "unifrac" (default: "shannon")}
+\item{diversity_measure}{Type of diversity to analyze: "shannon", "simpson", "richness", "evenness", "chao1", "ace", "inv_simpson", "fisher_alpha", "goods_coverage", "berger_parker", "bray", "jaccard", or "unifrac" (default: "shannon")}
 
 \item{alpha}{Significance level (default: 0.05)}
 
@@ -70,6 +70,24 @@ ace_report <- generate_diversity_power_report(
   n_viruses = 250,
   diversity_measure = "ace",
   output_file = "ace_power_report.html"
+)
+
+# Generate a power report for Good's coverage
+goods_report <- generate_diversity_power_report(
+  n_samples = 20,
+  effect_size = 1.2,
+  n_viruses = 200,
+  diversity_measure = "goods_coverage",
+  output_file = "goods_coverage_report.html"
+)
+
+# Generate a power report for Berger-Parker dominance index
+bp_report <- generate_diversity_power_report(
+  n_samples = 15,
+  effect_size = 1.0,
+  n_viruses = 150,
+  diversity_measure = "berger_parker",
+  output_file = "berger_parker_report.html"
 )
 
 # Generate a power report for Bray-Curtis dissimilarity

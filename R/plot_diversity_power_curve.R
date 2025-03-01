@@ -8,7 +8,7 @@
 #' @param effect_size Effect size to use when varying sample size (default: 1.0)
 #' @param n_samples Number of samples to use when varying effect size (default: 15)
 #' @param n_viruses Number of viral taxa to simulate (default: 200)
-#' @param diversity_measure Type of diversity to analyze: "shannon", "simpson", "richness", "evenness", "chao1", "ace", "inv_simpson", "fisher_alpha", "bray", "jaccard", or "unifrac" (default: "shannon")
+#' @param diversity_measure Type of diversity to analyze: "shannon", "simpson", "richness", "evenness", "chao1", "ace", "inv_simpson", "fisher_alpha", "goods_coverage", "berger_parker", "bray", "jaccard", or "unifrac" (default: "shannon")
 #' @param alpha Significance level (default: 0.05)
 #' @param sparsity Proportion of zeros in the data (default: 0.8)
 #' @param dispersion Dispersion parameter for viral abundance (default: 2)
@@ -32,6 +32,10 @@
 #'                                          param_type = "effect_size",
 #'                                          n_samples = 15,
 #'                                          diversity_measure = "fisher_alpha")
+#'
+#' # Power curve for varying sample sizes with Good's Coverage
+#' coverage_curve <- plot_diversity_power_curve(param_range = seq(5, 30, by = 5),
+#'                                           diversity_measure = "goods_coverage")
 #'                                          
 #' # Power curve for varying effect sizes with Bray-Curtis dissimilarity
 #' effect_curve <- plot_diversity_power_curve(param_range = seq(0.05, 0.3, by = 0.05),
@@ -123,6 +127,8 @@ plot_diversity_power_curve <- function(param_range, param_type = "n_samples",
                             chao1 = "Chao1 Richness Estimator",
                             ace = "ACE Richness Estimator",
                             fisher_alpha = "Fisher's Alpha",
+                            goods_coverage = "Good's Coverage",
+                            berger_parker = "Berger-Parker Dominance Index",
                             bray = "Bray-Curtis Dissimilarity",
                             jaccard = "Jaccard Distance",
                             unifrac = "UniFrac Distance",

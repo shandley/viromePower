@@ -29,7 +29,7 @@ plot_diversity_power_curve(
 
 \item{n_viruses}{Number of viral taxa to simulate (default: 200)}
 
-\item{diversity_measure}{Type of diversity to analyze: "shannon", "simpson", "richness", "evenness", "chao1", "ace", "inv_simpson", "fisher_alpha", "bray", "jaccard", or "unifrac" (default: "shannon")}
+\item{diversity_measure}{Type of diversity to analyze: "shannon", "simpson", "richness", "evenness", "chao1", "ace", "inv_simpson", "fisher_alpha", "goods_coverage", "berger_parker", "bray", "jaccard", or "unifrac" (default: "shannon")}
 
 \item{alpha}{Significance level (default: 0.05)}
 
@@ -62,6 +62,10 @@ fisher_curve <- plot_diversity_power_curve(param_range = seq(0.5, 2.0, by = 0.3)
                                          param_type = "effect_size",
                                          n_samples = 15,
                                          diversity_measure = "fisher_alpha")
+
+# Power curve for varying sample sizes with Good's Coverage
+coverage_curve <- plot_diversity_power_curve(param_range = seq(5, 30, by = 5),
+                                          diversity_measure = "goods_coverage")
                                          
 # Power curve for varying effect sizes with Bray-Curtis dissimilarity
 effect_curve <- plot_diversity_power_curve(param_range = seq(0.05, 0.3, by = 0.05),

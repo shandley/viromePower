@@ -9,7 +9,7 @@
 #' @param alpha Significance level (default: 0.05)
 #' @param sparsity Proportion of zeros in the data (default: 0.8)
 #' @param dispersion Dispersion parameter for viral abundance (default: 2)
-#' @param diversity_measure Type of diversity to analyze: "shannon", "simpson", "richness", "evenness", "chao1", "ace", "inv_simpson", "fisher_alpha", "bray", "jaccard", or "unifrac" (default: "shannon")
+#' @param diversity_measure Type of diversity to analyze: "shannon", "simpson", "richness", "evenness", "chao1", "ace", "inv_simpson", "fisher_alpha", "goods_coverage", "berger_parker", "bray", "jaccard", or "unifrac" (default: "shannon")
 #' @param n_sim Number of simulations for Monte Carlo estimation (default: 100)
 #'
 #' @return A list containing power estimates, simulation results, and parameters
@@ -24,10 +24,14 @@
 #' power_chao1 <- calc_viral_diversity_power(n_samples = 15, effect_size = 1.2,
 #'                                          n_viruses = 200, diversity_measure = "chao1")
 #'  
-#' # Calculate power for Inverse Simpson index
-#' power_invsimp <- calc_viral_diversity_power(n_samples = 15, effect_size = 1.0,
-#'                                            n_viruses = 200, diversity_measure = "inv_simpson")
-#'                                            
+#' # Calculate power for Good's coverage estimator
+#' power_coverage <- calc_viral_diversity_power(n_samples = 15, effect_size = 1.2,
+#'                                           n_viruses = 200, diversity_measure = "goods_coverage")
+#'
+#' # Calculate power for Berger-Parker dominance index
+#' power_bp <- calc_viral_diversity_power(n_samples = 15, effect_size = 1.0,
+#'                                      n_viruses = 200, diversity_measure = "berger_parker")
+#'                                           
 #' # Calculate power for beta diversity (Bray-Curtis)
 #' power_beta <- calc_viral_diversity_power(n_samples = 20, effect_size = 0.15, 
 #'                                         n_viruses = 300, diversity_measure = "bray")
@@ -45,7 +49,7 @@ calc_viral_diversity_power <- function(n_samples, effect_size, n_viruses,
     stop("alpha must be between 0 and 1")
   }
   
-  valid_measures <- c("shannon", "simpson", "richness", "evenness", "chao1", "ace", "inv_simpson", "fisher_alpha", "bray", "jaccard", "unifrac")
+  valid_measures <- c("shannon", "simpson", "richness", "evenness", "chao1", "ace", "inv_simpson", "fisher_alpha", "goods_coverage", "berger_parker", "bray", "jaccard", "unifrac")
   if (!(diversity_measure %in% valid_measures)) {
     stop("diversity_measure must be one of: ", paste(valid_measures, collapse = ", "))
   }
@@ -274,6 +278,46 @@ calc_viral_diversity_power <- function(n_samples, effect_size, n_viruses,
           # Ensure reasonable value
           alpha_est <- max(0, min(alpha_est, 1000))
           diversity_values[j] <- alpha_est
+        } else if (diversity_measure == "goods_coverage") {
+          # Good's coverage estimator
+          # C = 1 - (f1/N) where f1 is the number of singletons and N is total count
+          
+          # Count singletons (species with only one occurrence)
+          f1 <- sum(nonzero_counts == 1)
+          N <- sum(nonzero_counts)
+          
+          # Handle edge cases
+          if (N == 0) {
+            diversity_values[j] <- 0
+            next
+          }
+          
+          # Calculate Good's coverage
+          coverage <- 1 - (f1 / N)
+          
+          # Ensure value is in [0,1]
+          coverage <- max(0, min(1, coverage))
+          diversity_values[j] <- coverage
+        } else if (diversity_measure == "berger_parker") {
+          # Berger-Parker dominance index
+          # d = Nmax/N where Nmax is the count of the most abundant species
+          
+          # Handle edge cases
+          if (length(nonzero_counts) == 0 || sum(nonzero_counts) == 0) {
+            diversity_values[j] <- 0
+            next
+          }
+          
+          # Find the maximum abundance
+          max_abundance <- max(nonzero_counts)
+          total_abundance <- sum(nonzero_counts)
+          
+          # Calculate Berger-Parker index
+          berger_parker <- max_abundance / total_abundance
+          
+          # Ensure value is in [0,1]
+          berger_parker <- max(0, min(1, berger_parker))
+          diversity_values[j] <- berger_parker
         }
       }
       
