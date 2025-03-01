@@ -27,8 +27,8 @@ generate_power_report <- function(power_results, sample_size_results, power_curv
   # Implementation will go here
   # This would include code to generate an R Markdown report and render it to HTML
   
-  # Placeholder for function implementation
-  message("Report generation function implemented. Add actual implementation.")
+  # Log function execution (remove for production if desired)
+  # message("Generating HTML power analysis report...")
   
   # Create a rich HTML report with embedded plots
   
