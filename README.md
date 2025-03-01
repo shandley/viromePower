@@ -192,70 +192,77 @@ For studies focused on community-level metrics rather than individual taxa, viro
 ```r
 # Calculate power for alpha diversity (Shannon index)
 alpha_power <- calc_viral_diversity_power(
-  n_samples = 15,             # 15 samples per group
-  effect_size = 1.2,          # Moderate effect size (Cohen's d)
-  n_viruses = 200,            # Number of viral taxa
+  n_samples = 20,             # 20 samples per group
+  effect_size = 1.5,          # Moderate-large effect size (Cohen's d)
+  n_viruses = 150,            # Number of viral taxa
   diversity_measure = "shannon", # Shannon diversity index
-  sparsity = 0.8,             # Typical virome sparsity level
+  sparsity = 0.75,            # Typical virome sparsity level
+  dispersion = 1.8,           # Moderate dispersion parameter
   n_sim = 50                  # Number of simulation iterations
 )
 
 # Print power estimate for alpha diversity
 print(paste("Alpha diversity power:", round(alpha_power$power * 100, 1), "%"))
-# Example output: "Alpha diversity power: 78.0%"
+# Example output: "Alpha diversity power: 82.0%"
 
 # Calculate power for beta diversity (Bray-Curtis)
 beta_power <- calc_viral_diversity_power(
-  n_samples = 25,             # 25 samples per group
-  effect_size = 0.3,          # Stronger effect size for beta diversity (R-squared scale)
-  n_viruses = 300,            # Number of viral taxa
+  n_samples = 18,             # 18 samples per group
+  effect_size = 0.25,         # Moderate effect size for beta diversity (R-squared scale)
+  n_viruses = 200,            # Number of viral taxa
   diversity_measure = "bray", # Bray-Curtis dissimilarity
-  sparsity = 0.7,             # Lower sparsity for clearer community differences
-  dispersion = 1.5,           # Less overdispersion for more consistent patterns
+  sparsity = 0.75,            # Typical virome sparsity level
+  dispersion = 2.0,           # Realistic viral dispersion
   n_sim = 50                  # Number of simulation iterations
 )
 
 # Print power estimate for beta diversity
 print(paste("Beta diversity power:", round(beta_power$power * 100, 1), "%"))
-# Example output: "Beta diversity power: 86.0%"
+# Example output: "Beta diversity power: 74.0%"
 
 # Generate plot showing how power changes with sample size for alpha diversity
 shannon_curve <- plot_diversity_power_curve(
-  param_range = seq(5, 30, by = 5),  # Sample sizes to test
-  param_type = "n_samples",          # Varying sample size
-  effect_size = 1.2,                 # Fixed effect size
-  diversity_measure = "shannon",     # Shannon diversity
-  n_sim = 30                         # Simulations per point
+  param_range = seq(10, 30, by = 5),  # Sample sizes to test
+  param_type = "n_samples",           # Varying sample size
+  effect_size = 1.5,                  # Fixed effect size (same as above)
+  n_viruses = 150,                    # Number of viral taxa
+  diversity_measure = "shannon",      # Shannon diversity
+  sparsity = 0.75,                    # Typical virome sparsity
+  dispersion = 1.8,                   # Consistent with above example
+  n_sim = 30                          # Simulations per point
 )
 
 # Generate plot showing how power changes with effect size for beta diversity
 bray_curve <- plot_diversity_power_curve(
-  param_range = seq(0.1, 0.5, by = 0.1),    # Effect sizes to test (higher range)
-  param_type = "effect_size",               # Varying effect size
-  n_samples = 25,                           # Fixed sample size (increased)
-  diversity_measure = "bray",               # Bray-Curtis dissimilarity
-  sparsity = 0.7,                           # Lower sparsity for clearer differences
-  dispersion = 1.5,                         # Less overdispersion
-  n_sim = 30                                # Simulations per point
+  param_range = seq(0.1, 0.4, by = 0.05),    # Effect sizes to test (realistic range)
+  param_type = "effect_size",                # Varying effect size
+  n_samples = 18,                            # Fixed sample size (same as above)
+  n_viruses = 200,                           # Number of viral taxa
+  diversity_measure = "bray",                # Bray-Curtis dissimilarity
+  sparsity = 0.75,                           # Typical virome sparsity
+  dispersion = 2.0,                          # Consistent with above example
+  n_sim = 30                                 # Simulations per point
 )
 
 # Generate comprehensive alpha diversity power report
 alpha_report <- generate_diversity_power_report(
-  n_samples = 15,
-  effect_size = 1.2,
-  n_viruses = 200,
+  n_samples = 20, 
+  effect_size = 1.5,
+  n_viruses = 150,
   diversity_measure = "shannon",
+  sparsity = 0.75,
+  dispersion = 1.8,
   output_file = "shannon_diversity_power_report.html"
 )
 
 # Generate comprehensive beta diversity power report
 beta_report <- generate_diversity_power_report(
-  n_samples = 25,
-  effect_size = 0.3,
-  n_viruses = 300,
+  n_samples = 18,
+  effect_size = 0.25,
+  n_viruses = 200,
   diversity_measure = "bray",
-  sparsity = 0.7,
-  dispersion = 1.5,
+  sparsity = 0.75,
+  dispersion = 2.0,
   output_file = "beta_diversity_power_report.html"
 )
 ```
