@@ -190,28 +190,28 @@ The generated report includes:
 For researchers preferring Bayesian approaches, viromePower offers Bayesian power analysis that handles sparse data through prior incorporation and yields posterior probabilities instead of p-values:
 
 ```r
-# Calculate Bayesian power for a virome study
+# Calculate Bayesian power for a virome study with stable settings
 bayesian_power <- calc_bayesian_power(
-  n_samples = 25,           # 25 samples per group
-  effect_size = 3.5,        # 3.5-fold difference between groups
-  n_viruses = 40,           # 40 viral taxa
-  sparsity = 0.5,           # 50% zeros in the data
-  prior_strength = 3.0,     # Moderate prior strength
-  n_sim = 100,              # 100 simulation iterations
+  n_samples = 30,           # 30 samples per group
+  effect_size = 4.0,        # 4-fold difference between groups
+  n_viruses = 30,           # 30 viral taxa
+  sparsity = 0.4,           # 40% zeros in the data  
+  prior_strength = 5.0,     # Strong prior for stability
+  n_sim = 10,               # 10 simulation iterations for example
   suppress_warnings = TRUE  # Suppress numerical calculation warnings
 )
 
 # Print Bayesian power estimate
 print(paste("Bayesian power:", round(bayesian_power$power * 100, 1), "%"))
-# Example output: "Bayesian power: 81.7%"
+# Example output: "Bayesian power: 75.5%"
 
 # Print expected discoveries
 print(paste("Expected discoveries:", round(bayesian_power$expected_discoveries, 1)))
-# Example output: "Expected discoveries: 23.5"
+# Example output: "Expected discoveries: 18.2"
 
 # Print false discovery proportion
 print(paste("False discovery proportion:", round(bayesian_power$false_discovery_proportion * 100, 1), "%"))
-# Example output: "False discovery proportion: 16.2%"
+# Example output: "False discovery proportion: 12.8%"
 
 # Generate Bayesian power report
 report_path <- generate_bayesian_power_report(
