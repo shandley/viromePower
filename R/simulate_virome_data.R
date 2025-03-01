@@ -60,7 +60,9 @@ simulate_virome_data <- function(n_samples, n_viruses, sparsity = 0.8,
     
     # Generate sparsity pattern
     # Higher abundance taxa generally have lower sparsity
-    zero_prob <- min(0.95, sparsity * exp(-lambda/mean(abundance_means)))
+    # Add safety check to prevent NaN or extreme values
+    zero_prob <- min(0.95, sparsity * exp(-lambda/(mean(abundance_means) + 1e-10)))
+    zero_prob <- max(0.05, zero_prob)  # Always keep some data points
     is_present <- runif(n_samples) > zero_prob
     
     # Generate counts for present observations using negative binomial

@@ -30,18 +30,27 @@ estimate_sample_size <- function(power = 0.8, effect_size, n_viruses,
     stop("alpha must be between 0 and 1")
   }
   
-  # Define search space for sample sizes
+  # Define search space for sample sizes with reasonable bounds
   # Start with a reasonable range based on effect size
   min_n <- max(3, ceiling(2 / effect_size))  # Minimum n depends on effect size
-  max_n <- ceiling(50 / sqrt(effect_size))   # Maximum n (smaller effect = larger max)
+  
+  # Set a reasonable upper bound for max sample size
+  # Larger effect sizes need smaller samples, and vice versa
+  # But we don't want to go beyond practical limits
+  max_n <- min(100, ceiling(50 / sqrt(effect_size)))   
+  
+  # If effect size is very small, adjust the maximum but keep it reasonable
+  if (effect_size < 1.2) {
+    max_n <- min(200, max_n * 2)
+  }
   
   # Initial search grid (coarse)
-  sample_sizes <- seq(min_n, max_n, by = max(1, floor((max_n - min_n) / 10)))
+  # Ensure at least 5 points in the grid for better interpolation
+  grid_size <- max(5, min(10, max_n - min_n + 1))
+  step_size <- max(1, floor((max_n - min_n) / (grid_size - 1)))
   
-  # For very small effect sizes, adjust the grid
-  if (effect_size < 1.2) {
-    sample_sizes <- c(sample_sizes, seq(max_n, max_n * 2, by = 5))
-  }
+  # Generate sample size grid
+  sample_sizes <- seq(min_n, max_n, by = step_size)
   
   # Initialize storage for power results
   powers <- numeric(length(sample_sizes))
@@ -72,15 +81,16 @@ estimate_sample_size <- function(power = 0.8, effect_size, n_viruses,
   if (length(sufficient_power) == 0) {
     # If no sample size achieved desired power, use interpolation or extrapolation
     if (max(powers) < power) {
-      # Need to extrapolate beyond our grid
+      # Need to extrapolate beyond our grid, but with reasonable limits
       warning("Could not achieve desired power with sample sizes up to ", max(sample_sizes), 
-              ". Extrapolating, but results may be unreliable.")
+              ". Using maximum tested sample size instead.")
       
-      # Fit a simple model to extrapolate
-      power_model <- stats::lm(powers ~ sqrt(sample_sizes))
-      
-      # Calculate required n using the model (with some safety buffer)
-      required_sample_size <- ceiling((power - coef(power_model)[1])^2 / coef(power_model)[2]^2 * 1.2)
+      # Instead of unreliable extrapolation, return the maximum sample size with a warning
+      # This is more conservative and practical than extrapolating to potentially enormous values
+      required_sample_size <- max(sample_sizes)
+      warning("To achieve ", power*100, "% power with effect size ", effect_size, 
+              ", you may need more than ", required_sample_size, 
+              " samples per group, or need to reconsider study parameters.")
       
       # Refine with a smaller number of simulations
       power_check <- calc_virome_power(
