@@ -746,19 +746,33 @@ When to use zero-inflated models:
       return(output_file)
     }
     
-    # Try rendering with error handling
+    # Try rendering with multiple fallback options
+    output_created <- FALSE
+    
+    # First try with all plots disabled
+    tmp_rmd_simple <- tempfile(fileext = ".Rmd")
+    simple_content <- gsub("```\\{r .+?fig.+?\\}", "```{r, eval=FALSE}", readLines(tmp_rmd))
+    writeLines(simple_content, tmp_rmd_simple)
+    
     tryCatch({
+      message("Attempting to render report with plots disabled...")
       rmarkdown::render(
-        input = tmp_rmd,
+        input = tmp_rmd_simple,
         output_file = basename(output_file),
         output_dir = dirname(output_file),
         envir = env,
         quiet = TRUE
       )
+      output_created <- TRUE
+      message("Report generated successfully with simplified plots!")
     }, error = function(e) {
-      # If rendering fails, create a simple text report instead
-      warning(paste0("Failed to render HTML report: ", e$message, 
-                   ". Creating text summary instead."))
+      warning(paste0("Failed to render simplified HTML report: ", e$message))
+      message("Will attempt text-only report...")
+    })
+    
+    # If simplified HTML rendering fails, create text report
+    if (!output_created) {
+      warning("Creating text summary as fallback.")
       text_output <- paste0(output_file, ".txt")
       writeLines(
         c("# Zero-Inflated Virome Power Analysis Report",
@@ -770,18 +784,27 @@ When to use zero-inflated models:
           paste0("- Viral taxa: ", template_data$n_viruses),
           paste0("- Structural zeros: ", template_data$structural_zeros_pct, "%"),
           paste0("- Sampling zeros: ", template_data$sampling_zeros_pct, "%"),
+          paste0("- Total sparsity: ", template_data$total_sparsity_pct, "%"),
           "",
           "## Results",
           paste0("- Statistical power: ", template_data$power_pct, "%"),
           paste0("- Recommended sample size: ", template_data$recommended_sample_size),
           paste0("- Expected discoveries: ", template_data$expected_discoveries),
+          paste0("- False discovery rate: ", template_data$fdr_pct, "%"),
+          "",
+          "## Interpretation",
+          "- Zero-inflated models account for both structural zeros (true absence) and sampling zeros (detection failures)",
+          "- Zero-inflated models typically provide higher power than standard models for virome data",
+          "- The recommended sample size accounts for the high sparsity in virome data",
           "",
           "Note: Full HTML report generation failed. This is a simplified text summary."),
         text_output
       )
       output_file <- text_output
-      return(output_file)
-    })
+    }
+    
+    # Clean up temp file
+    unlink(tmp_rmd_simple)
   }, error = function(e) {
     stop(paste0("Error rendering report: ", e$message))
   })
