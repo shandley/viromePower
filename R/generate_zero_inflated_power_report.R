@@ -154,7 +154,7 @@ generate_zero_inflated_power_report <- function(zinb_power_results,
   # Prepare template data
   template_data <- list(
     title = title,
-    include_code = tolower(include_code),
+    include_code = ifelse(include_code, "TRUE", "FALSE"),
     n_samples = ifelse(is.null(params$n_samples), "NA", params$n_samples),
     n_viruses = ifelse(is.null(params$n_viruses), "NA", params$n_viruses),
     effect_size = ifelse(is.null(params$effect_size), "NA", params$effect_size),
@@ -209,8 +209,9 @@ generate_zero_inflated_power_report <- function(zinb_power_results,
                               package = "viromePower")
   
   # If template not found in package, create a temporary one
-  if (template_path == "") {
+  if (template_path == "" || !file.exists(template_path)) {
     template_path <- tempfile(fileext = ".Rmd")
+    message("Creating new template at: ", template_path)
     
     # Template content - write the template content here
     template_content <- '---
