@@ -12,6 +12,9 @@
 #' @param sampling_zeros Proportion of sampling zeros (detection failures) among non-structural zeros (default: 0.2)
 #' @param dispersion Dispersion parameter for negative binomial distribution (default: 1.5)
 #' @param zero_inflation_difference Whether the zero-inflation probability differs between groups (default: TRUE)
+#' @param variable_zi_rates Logical; whether to use varying zero inflation rates across viral taxa (default: FALSE)
+#' @param zi_alpha Shape parameter for beta distribution to generate variable structural zero rates (default: 2)
+#' @param zi_beta Shape parameter for beta distribution to generate variable structural zero rates (default: 3)
 #' @param prior_strength Prior strength (concentration) parameter (default: 2)
 #' @param credible_interval Width of the credible interval for decision threshold (default: 0.95)
 #' @param fold_change_threshold Minimum fold change to consider biologically relevant (default: 1.5)
@@ -57,6 +60,9 @@ calc_zinb_bayesian_power <- function(n_samples,
                                     sampling_zeros = 0.2,
                                     dispersion = 1.5,
                                     zero_inflation_difference = TRUE,
+                                    variable_zi_rates = FALSE,
+                                    zi_alpha = 2,
+                                    zi_beta = 3,
                                     prior_strength = 2,
                                     credible_interval = 0.95,
                                     fold_change_threshold = 1.5,
@@ -140,6 +146,9 @@ calc_zinb_bayesian_power <- function(n_samples,
     sampling_zeros = sampling_zeros,
     dispersion = dispersion,
     zero_inflation_difference = zero_inflation_difference,
+    variable_zi_rates = variable_zi_rates,
+    zi_alpha = zi_alpha,
+    zi_beta = zi_beta,
     prior_strength = prior_strength,
     credible_interval = credible_interval,
     fold_change_threshold = fold_change_threshold,
@@ -171,7 +180,12 @@ calc_zinb_bayesian_power <- function(n_samples,
     sampling_zeros_proportion = numeric(n_sim),
     observed_sparsity = numeric(n_sim),
     detection_rate = numeric(n_sim),
-    differential_detection = numeric(n_sim)
+    differential_detection = numeric(n_sim),
+    zi_variability = numeric(n_sim), # Track variation in ZI rates
+    zi_mean = numeric(n_sim),
+    zi_median = numeric(n_sim),
+    zi_min = numeric(n_sim),
+    zi_max = numeric(n_sim)
   )
   
   # Main simulation loop
@@ -188,6 +202,9 @@ calc_zinb_bayesian_power <- function(n_samples,
       dispersion = dispersion,
       effect_size = effect_size,
       zero_inflation_difference = zero_inflation_difference,
+      variable_zi_rates = variable_zi_rates,
+      zi_alpha = zi_alpha,
+      zi_beta = zi_beta,
       groups = groups
     )
     
@@ -203,6 +220,22 @@ calc_zinb_bayesian_power <- function(n_samples,
     detection_a <- mean(colSums(sim_data$counts[, group_a_indices] > 0) / n_viruses)
     detection_b <- mean(colSums(sim_data$counts[, group_b_indices] > 0) / n_viruses)
     zero_inflation_tracking$differential_detection[i] <- abs(detection_b - detection_a)
+    
+    # Track virus-specific zero inflation rate statistics if available
+    if ("virus_specific_zi" %in% names(sim_data)) {
+      zero_inflation_tracking$zi_variability[i] <- sd(sim_data$virus_specific_zi$rates)
+      zero_inflation_tracking$zi_mean[i] <- sim_data$virus_specific_zi$mean
+      zero_inflation_tracking$zi_median[i] <- sim_data$virus_specific_zi$median
+      zero_inflation_tracking$zi_min[i] <- sim_data$virus_specific_zi$min
+      zero_inflation_tracking$zi_max[i] <- sim_data$virus_specific_zi$max
+    } else {
+      # Default values if virus-specific ZI info is not available
+      zero_inflation_tracking$zi_variability[i] <- 0
+      zero_inflation_tracking$zi_mean[i] <- structural_zeros
+      zero_inflation_tracking$zi_median[i] <- structural_zeros
+      zero_inflation_tracking$zi_min[i] <- structural_zeros
+      zero_inflation_tracking$zi_max[i] <- structural_zeros
+    }
     
     # Perform Bayesian analysis accounting for zero-inflation
     bayes_result <- analyze_zinb_bayesian(
@@ -341,7 +374,14 @@ calc_zinb_bayesian_power <- function(n_samples,
     observed_sparsity = mean(zero_inflation_tracking$observed_sparsity),
     detection_rate = mean(zero_inflation_tracking$detection_rate),
     differential_detection = mean(zero_inflation_tracking$differential_detection),
-    estimated_zi_probability = mean(zero_inflation_probs)
+    estimated_zi_probability = mean(zero_inflation_probs),
+    variable_zi_rates = variable_zi_rates,
+    zi_variability = mean(zero_inflation_tracking$zi_variability),
+    zi_mean = mean(zero_inflation_tracking$zi_mean),
+    zi_median = mean(zero_inflation_tracking$zi_median),
+    zi_min = mean(zero_inflation_tracking$zi_min),
+    zi_max = mean(zero_inflation_tracking$zi_max),
+    zi_params = if(variable_zi_rates) list(alpha = zi_alpha, beta = zi_beta) else NULL
   )
   
   # Create summary of simulation results

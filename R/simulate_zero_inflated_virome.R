@@ -14,13 +14,26 @@
 #' @param effect_size Effect size for group differences (default: 2.0)
 #' @param zero_inflation_difference Whether the zero-inflation probability differs between groups (default: TRUE)
 #' @param groups Vector of group labels for samples (default: equal groups)
+#' @param variable_zi_rates Logical; whether to use varying zero inflation rates across viral taxa (default: FALSE)
+#' @param zi_alpha Shape parameter for beta distribution to generate variable structural zero rates (default: 2)
+#' @param zi_beta Shape parameter for beta distribution to generate variable structural zero rates (default: 3)
 #'
 #' @return A list containing simulated count matrix and sample metadata, with additional
 #'         information about the zero-inflation structure
 #' @export
 #'
 #' @examples
+#' # Basic zero-inflated simulation
 #' sim_data <- simulate_zero_inflated_virome(n_samples = 30, n_viruses = 100)
+#' 
+#' # Simulation with varying zero-inflation rates across viral taxa
+#' sim_data_var <- simulate_zero_inflated_virome(
+#'   n_samples = 30, 
+#'   n_viruses = 100,
+#'   variable_zi_rates = TRUE,
+#'   zi_alpha = 2,
+#'   zi_beta = 5  # More right-skewed distribution of zi rates
+#' )
 simulate_zero_inflated_virome <- function(n_samples, 
                                          n_viruses, 
                                          structural_zeros = 0.7, 
@@ -28,7 +41,10 @@ simulate_zero_inflated_virome <- function(n_samples,
                                          dispersion = 1.5, 
                                          effect_size = 2.0,
                                          zero_inflation_difference = TRUE,
-                                         groups = NULL) {
+                                         groups = NULL,
+                                         variable_zi_rates = FALSE,
+                                         zi_alpha = 2,
+                                         zi_beta = 3) {
   # Create group labels if not provided
   if (is.null(groups)) {
     # Default: Half samples in group A, half in group B
@@ -78,10 +94,38 @@ simulate_zero_inflated_virome <- function(n_samples,
   # For each virus, determine structural zero probability (can vary by group)
   structural_zero_probs <- matrix(0, nrow = n_viruses, ncol = 2)  # Col 1 = Group A, Col 2 = Group B
   
+  # Track individual virus zero-inflation rates for output
+  virus_specific_zi_rates <- numeric(n_viruses)
+  
+  # If variable_zi_rates is TRUE, generate virus-specific zero-inflation rates
+  if (variable_zi_rates) {
+    # Use beta distribution to generate varying rates - different shapes create different patterns
+    # Higher alpha skews right (more viruses with lower ZI), higher beta skews left (more viruses with higher ZI)
+    virus_zi_rates <- rbeta(n_viruses, shape1 = zi_alpha, shape2 = zi_beta)
+    
+    # Scale the rates to be centered around the specified structural_zeros parameter
+    # This ensures the average matches the input parameter while allowing variability
+    scaling_factor <- structural_zeros / mean(virus_zi_rates)
+    virus_zi_rates <- virus_zi_rates * scaling_factor
+    
+    # Bound rates to reasonable values
+    virus_zi_rates <- pmin(0.95, pmax(0.1, virus_zi_rates))
+    
+    # Save for later output
+    virus_specific_zi_rates <- virus_zi_rates
+  }
+  
   for (i in 1:n_viruses) {
-    # Base probability is related to abundance (rare taxa have more structural zeros)
-    base_prob <- structural_zeros * (1 - abundance_means[i] / max(abundance_means))
-    base_prob <- min(0.95, max(0.3, base_prob))  # Keep within reasonable range
+    # Set base probability based on either fixed or variable rates
+    if (variable_zi_rates) {
+      # Use pre-generated virus-specific rate
+      base_prob <- virus_zi_rates[i]
+    } else {
+      # Use the traditional abundance-based approach
+      base_prob <- structural_zeros * (1 - abundance_means[i] / max(abundance_means))
+      base_prob <- min(0.95, max(0.3, base_prob))  # Keep within reasonable range
+      virus_specific_zi_rates[i] <- base_prob
+    }
     
     # Group A probability
     structural_zero_probs[i, 1] <- base_prob
@@ -180,13 +224,25 @@ simulate_zero_inflated_virome <- function(n_samples,
       sampling_zeros = sampling_zeros,
       dispersion = dispersion,
       effect_size = effect_size,
-      zero_inflation_difference = zero_inflation_difference
+      zero_inflation_difference = zero_inflation_difference,
+      variable_zi_rates = variable_zi_rates,
+      zi_alpha = zi_alpha,
+      zi_beta = zi_beta
     ),
     sparsity_summary = list(
       observed_sparsity = observed_sparsity,
       structural_zeros_proportion = structural_zeros_count / (n_viruses * n_samples),
       sampling_zeros_proportion = sampling_zeros_count / (n_viruses * n_samples),
       nonzero_proportion = 1 - observed_sparsity
+    ),
+    virus_specific_zi = list(
+      rates = virus_specific_zi_rates,
+      mean = mean(virus_specific_zi_rates),
+      median = median(virus_specific_zi_rates),
+      min = min(virus_specific_zi_rates),
+      max = max(virus_specific_zi_rates),
+      sd = sd(virus_specific_zi_rates),
+      structural_zero_probs = structural_zero_probs
     )
   )
 }

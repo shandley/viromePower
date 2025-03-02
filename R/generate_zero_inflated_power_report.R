@@ -92,7 +92,8 @@ generate_zero_inflated_power_report <- function(zinb_power_results,
   } else {
     # Attempt to extract from top level
     param_names <- c("n_samples", "n_viruses", "effect_size", "structural_zeros", 
-                     "sampling_zeros", "dispersion", "posterior_prob_threshold")
+                     "sampling_zeros", "dispersion", "posterior_prob_threshold",
+                     "variable_zi_rates", "zi_alpha", "zi_beta")
     for (param in param_names) {
       if (param %in% names(zinb_power_results)) {
         params[[param]] <- zinb_power_results[[param]]
@@ -151,6 +152,54 @@ generate_zero_inflated_power_report <- function(zinb_power_results,
     }
   }
   
+  # Determine if variable zero-inflation was used
+  variable_zi <- if (!is.null(params$variable_zi_rates)) {
+    params$variable_zi_rates
+  } else if ("variable_zi_rates" %in% names(zero_summary)) {
+    zero_summary$variable_zi_rates
+  } else {
+    FALSE
+  }
+  
+  # Extract zero-inflation variability information
+  zi_variability <- if (variable_zi && "zi_variability" %in% names(zero_summary)) {
+    zero_summary$zi_variability
+  } else {
+    0
+  }
+  
+  zi_min <- if (variable_zi && "zi_min" %in% names(zero_summary)) {
+    zero_summary$zi_min
+  } else if (!is.null(params$structural_zeros)) {
+    params$structural_zeros
+  } else {
+    NA
+  }
+  
+  zi_max <- if (variable_zi && "zi_max" %in% names(zero_summary)) {
+    zero_summary$zi_max
+  } else if (!is.null(params$structural_zeros)) {
+    params$structural_zeros
+  } else {
+    NA
+  }
+  
+  zi_alpha <- if (variable_zi && !is.null(params$zi_alpha)) {
+    params$zi_alpha
+  } else if (variable_zi && "zi_params" %in% names(zero_summary) && "alpha" %in% names(zero_summary$zi_params)) {
+    zero_summary$zi_params$alpha
+  } else {
+    2
+  }
+  
+  zi_beta <- if (variable_zi && !is.null(params$zi_beta)) {
+    params$zi_beta
+  } else if (variable_zi && "zi_params" %in% names(zero_summary) && "beta" %in% names(zero_summary$zi_params)) {
+    zero_summary$zi_params$beta
+  } else {
+    3
+  }
+  
   # Prepare template data
   template_data <- list(
     title = title,
@@ -180,7 +229,13 @@ generate_zero_inflated_power_report <- function(zinb_power_results,
     false_positives = ifelse(is.na(sim_summary$false_positives), "NA", 
                            round(sim_summary$false_positives, 1)),
     expected_discoveries = ifelse(is.na(expected_discoveries), "NA", 
-                                round(expected_discoveries, 0))
+                                round(expected_discoveries, 0)),
+    variable_zi_rates = variable_zi,
+    zi_variability = ifelse(is.na(zi_variability), "NA", round(zi_variability, 3)),
+    zi_min = ifelse(is.na(zi_min), "NA", round(zi_min, 2)),
+    zi_max = ifelse(is.na(zi_max), "NA", round(zi_max, 2)),
+    zi_alpha = zi_alpha,
+    zi_beta = zi_beta
   )
   
   # Estimate recommended sample size
@@ -355,6 +410,65 @@ if(all(!is.na(percentages)) && requireNamespace("ggplot2", quietly = TRUE)) {
 }
 ```
 
+{{#variable_zi_rates}}
+### Zero-Inflation Rate Distribution Across Viral Taxa
+
+```{r zi-distribution-plot, echo=FALSE, fig.width=10, fig.height=6}
+# Only create this plot if variable zero-inflation was used
+if(requireNamespace("ggplot2", quietly = TRUE)) {
+  # Generate a sample of Beta distribution values
+  if (exists("rbeta")) {
+    # Generate zero-inflation rates from Beta distribution for visualization
+    zi_rates <- rbeta(100, shape1 = {{zi_alpha}}, shape2 = {{zi_beta}})
+    
+    # Create data frame for plotting
+    plot_data <- data.frame(
+      rate = zi_rates
+    )
+    
+    # Plot distribution
+    ggplot2::ggplot(plot_data, ggplot2::aes(x = rate)) +
+      ggplot2::geom_histogram(fill = "steelblue", alpha = 0.7, bins = 20) +
+      ggplot2::geom_density(color = "firebrick", size = 1.2) +
+      ggplot2::labs(
+        title = "Distribution of Zero-Inflation Rates Across Viral Taxa",
+        subtitle = paste0("Beta(", {{zi_alpha}}, ", ", {{zi_beta}}, ") distribution"),
+        x = "Structural Zero Rate",
+        y = "Density"
+      ) +
+      ggplot2::theme_minimal() +
+      ggplot2::geom_vline(xintercept = {{zi_min}}, 
+                          linetype = "dashed", color = "darkgreen") +
+      ggplot2::geom_vline(xintercept = {{zi_max}}, 
+                          linetype = "dashed", color = "darkgreen") +
+      ggplot2::annotate("text", x = {{zi_min}} - 0.02, y = 1, 
+                       label = "Min", hjust = 1, color = "darkgreen") +
+      ggplot2::annotate("text", x = {{zi_max}} + 0.02, y = 1, 
+                       label = "Max", hjust = 0, color = "darkgreen")
+  } else {
+    # If rbeta is not available, create a basic plot
+    plot(1, 1, type = "n", xlim = c(0, 1), ylim = c(0, 3), 
+         xlab = "Structural Zero Rate", ylab = "Density", 
+         main = "Distribution of Zero-Inflation Rates Across Viral Taxa")
+    text(0.5, 1.5, paste0("Variable zero-inflation using Beta(", 
+                          {{zi_alpha}}, ", ", {{zi_beta}}, ") distribution"), 
+         cex = 1.2)
+    text(0.5, 1, paste0("Range: ", {{zi_min}}, " - ", {{zi_max}}), cex = 1.1)
+  }
+} else {
+  # Fallback if ggplot2 is not available
+  plot(1, 1, type = "n", xlim = c(0, 1), ylim = c(0, 2), 
+       xlab = "Structural Zero Rate", ylab = "Density", 
+       main = "Distribution of Zero-Inflation Rates")
+  text(0.5, 1, paste0("Variable zero-inflation using Beta(", 
+                      {{zi_alpha}}, ", ", {{zi_beta}}, ") distribution"), 
+       cex = 1.2)
+}
+```
+
+In this analysis, each viral taxon has its own structural zero rate, drawn from a Beta({{zi_alpha}}, {{zi_beta}}) distribution. This better reflects the reality that different viral taxa have different prevalence patterns and abundance-sparsity relationships.
+{{/variable_zi_rates}}
+
 The high sparsity in virome data requires specialized models for accurate power estimation.
 
 ### Zero-Inflation Analysis
@@ -368,6 +482,16 @@ The high sparsity in virome data requires specialized models for accurate power 
 <li>Detection rate: <span class="key-value">{{detection_rate}}%</span></li>
 <li>Differential detection between groups: <span class="key-value">{{differential_detection}}%</span></li>
 </ul>
+
+{{#variable_zi_rates}}
+<h4>Variable Zero-Inflation Rates Across Viral Taxa</h4>
+<ul>
+<li>Zero-inflation variability: <span class="key-value">{{zi_variability}}</span></li>
+<li>Range of zero-inflation rates: <span class="key-value">{{zi_min}}-{{zi_max}}</span></li>
+<li>Distribution shape: <span class="key-value">Beta({{zi_alpha}}, {{zi_beta}})</span></li>
+</ul>
+<p>This analysis uses a variable zero-inflation model where different viral taxa have distinct structural zero rates, following a Beta({{zi_alpha}}, {{zi_beta}}) distribution. This more accurately reflects the heterogeneity of viral presence/absence patterns in microbiome data.</p>
+{{/variable_zi_rates}}
 </div>
 
 ## Power Analysis Results
@@ -648,6 +772,19 @@ The zero-inflated model is generally superior for virome data with the following
 2. **More accurate power estimates**: Accounts for both sources of zeros
 3. **Better false discovery control**: Distinguishes between structural and sampling zeros
 4. **More realistic sample size requirements**: Prevents underpowered study designs
+
+{{#variable_zi_rates}}
+### Variable Zero-Inflation Model Features
+
+This analysis uses an advanced zero-inflated model with varying zero-inflation rates across viral taxa, providing these additional benefits:
+
+1. **Taxon-specific modeling**: Each viral taxon has its own structural zero rate, reflecting biological reality
+2. **Improved precision**: More accurate power estimates for rare and common taxa
+3. **Better handling of taxonomic heterogeneity**: Accounts for different prevalence patterns
+4. **More appropriate for diverse viral communities**: Reflects the natural variability in virus prevalence
+
+The Beta({{zi_alpha}}, {{zi_beta}}) distribution used to model zero-inflation rates captures the heterogeneity of viral presence patterns observed in real virome data.
+{{/variable_zi_rates}}
 
 ## Interpretation Guidelines
 
