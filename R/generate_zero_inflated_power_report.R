@@ -749,18 +749,26 @@ When to use zero-inflated models:
     # Try rendering with multiple fallback options
     output_created <- FALSE
     
-    # First try with all plots disabled
+    # First try with all plots disabled - completely disable all R code chunks
     tmp_rmd_simple <- tempfile(fileext = ".Rmd")
-    simple_content <- gsub("```\\{r .+?fig.+?\\}", "```{r, eval=FALSE}", readLines(tmp_rmd))
+    simple_content <- readLines(tmp_rmd)
+    # Disable all chunks that have plot code
+    simple_content <- gsub("```\\{r .+?\\}", "```{r, eval=FALSE}", simple_content)
     writeLines(simple_content, tmp_rmd_simple)
     
     tryCatch({
       message("Attempting to render report with plots disabled...")
+      
+      # Create a completely static rendering environment with no simulation functions
+      static_env <- new.env()
+      static_env$zinb_power_results <- zinb_power_results
+      
+      # Use vanilla rmarkdown with minimal dependencies
       rmarkdown::render(
         input = tmp_rmd_simple,
         output_file = basename(output_file),
         output_dir = dirname(output_file),
-        envir = env,
+        envir = static_env,
         quiet = TRUE
       )
       output_created <- TRUE
@@ -770,9 +778,72 @@ When to use zero-inflated models:
       message("Will attempt text-only report...")
     })
     
-    # If simplified HTML rendering fails, create text report
+    # If simplified HTML rendering fails, try a super-simplified HTML file 
     if (!output_created) {
-      warning("Creating text summary as fallback.")
+      message("Creating direct HTML output as fallback.")
+      
+      # Create very simple HTML directly without going through R Markdown
+      html_output <- output_file
+      html_content <- c(
+        "<!DOCTYPE html>",
+        "<html>",
+        "<head>",
+        paste0("<title>", template_data$title, "</title>"),
+        "<style>",
+        "body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }",
+        "h1, h2, h3 { color: #2c3e50; }",
+        ".highlight { background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin-bottom: 20px; }",
+        ".key-value { font-weight: bold; color: #3498db; }",
+        "</style>",
+        "</head>",
+        "<body>",
+        paste0("<h1>", template_data$title, "</h1>"),
+        paste0("<p>Generated on ", Sys.Date(), "</p>"),
+        
+        "<h2>Parameters</h2>",
+        "<div class='highlight'>",
+        "<ul>",
+        paste0("<li>Samples per group: <span class='key-value'>", template_data$n_samples, "</span></li>"),
+        paste0("<li>Effect size: <span class='key-value'>", template_data$effect_size, "</span></li>"),
+        paste0("<li>Viral taxa: <span class='key-value'>", template_data$n_viruses, "</span></li>"),
+        paste0("<li>Structural zeros: <span class='key-value'>", template_data$structural_zeros_pct, "%</span></li>"),
+        paste0("<li>Sampling zeros: <span class='key-value'>", template_data$sampling_zeros_pct, "%</span></li>"),
+        paste0("<li>Total sparsity: <span class='key-value'>", template_data$total_sparsity_pct, "%</span></li>"),
+        "</ul>",
+        "</div>",
+        
+        "<h2>Results</h2>",
+        "<div class='highlight'>",
+        paste0("<p>Statistical power: <span class='key-value'>", template_data$power_pct, "%</span></p>"),
+        paste0("<p>Recommended sample size: <span class='key-value'>", template_data$recommended_sample_size, "</span></p>"),
+        paste0("<p>Expected discoveries: <span class='key-value'>", template_data$expected_discoveries, "</span></p>"),
+        paste0("<p>False discovery rate: <span class='key-value'>", template_data$fdr_pct, "%</span></p>"),
+        "</div>",
+        
+        "<h2>Interpretation</h2>",
+        "<ul>",
+        "<li>Zero-inflated models account for both structural zeros (true absence) and sampling zeros (detection failures)</li>",
+        "<li>Zero-inflated models typically provide higher power than standard models for virome data</li>",
+        "<li>The recommended sample size accounts for the high sparsity in virome data</li>",
+        "</ul>",
+        
+        "<p><em>Note: This is a simplified report. Full interactive visualizations were not generated.</em></p>",
+        "</body>",
+        "</html>"
+      )
+      
+      tryCatch({
+        writeLines(html_content, html_output)
+        output_created <- TRUE
+        message("Simple HTML report created successfully!")
+      }, error = function(e) {
+        warning(paste0("Failed to create HTML file: ", e$message, ". Will try text file instead."))
+      })
+    }
+    
+    # If both HTML options fail, fall back to plain text
+    if (!output_created) {
+      message("Creating plain text summary as final fallback.")
       text_output <- paste0(output_file, ".txt")
       writeLines(
         c("# Zero-Inflated Virome Power Analysis Report",
@@ -812,6 +883,17 @@ When to use zero-inflated models:
   # Clean up temp files
   unlink(tmp_rmd)
   
-  # Return the path to the generated report
-  return(normalizePath(output_file))
+  # Return the path to the generated report - handle case where output file doesn't exist
+  if (file.exists(output_file)) {
+    return(normalizePath(output_file))
+  } else {
+    # Check if text version exists
+    text_file <- paste0(output_file, ".txt")
+    if (file.exists(text_file)) {
+      return(normalizePath(text_file))
+    } else {
+      # Return whatever we have as the path, without normalization
+      return(output_file)
+    }
+  }
 }
