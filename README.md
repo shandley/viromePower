@@ -11,11 +11,13 @@ An R package for statistical power analysis of virome studies. This package help
 - Account for multiple testing correction and compositional nature of virome data
 - Support for Bayesian and frequentist analysis approaches
 - Stratified sampling designs for complex study structures
+- Variable zero-inflation modeling for taxon-specific structural zero rates
 
 ## Robust Statistical Analysis
 viromePower incorporates specially designed features to handle unique challenges in virome data:
 
 - **Extreme sparsity handling**: Accounts for high proportion of zeros in virome datasets
+- **Variable zero-inflation modeling**: Models taxon-specific structural zero rates using Beta distributions
 - **Sample size boundaries**: Prevents unrealistic sample size estimates for small effect sizes
 - **Statistical test safeguards**: Automatically adjusts for low sample sizes and high variability
 - **Error handling and recovery**: Gracefully handles edge cases without crashing
@@ -408,19 +410,97 @@ zinb_report <- generate_zero_inflated_power_report(
 # - Decision tools for appropriate model selection
 ```
 
+### Advanced Zero-Inflation Modeling with Variable Zero Rates Across Taxa
+
+viromePower now supports variable zero-inflation rates across viral taxa, reflecting the biological reality that different viruses have different prevalence patterns:
+
+```r
+# Generate data with variable zero-inflation rates using Beta distribution
+# Beta(2,5) creates right-skewed distribution (more viruses with lower ZI rates)
+sim_variable <- simulate_zero_inflated_virome(
+  n_samples = 40,              # 40 samples per group
+  n_viruses = 150,             # 150 viral taxa
+  structural_zeros = 0.7,      # Mean structural zero rate
+  sampling_zeros = 0.2,        # Sampling zero rate
+  variable_zi_rates = TRUE,    # Enable variable zero-inflation
+  zi_alpha = 2,                # Beta distribution shape parameter
+  zi_beta = 5,                 # Beta distribution shape parameter
+  effect_size = 2.0            # 2-fold difference between groups
+)
+
+# Visualize the distribution of zero-inflation rates across viral taxa
+if (require(ggplot2)) {
+  # Plot the distribution of structural zero rates
+  zi_dist_plot <- plot_virus_specific_zi_rates(sim_variable)
+  print(zi_dist_plot)
+  
+  # Examine relationship between abundance and zero-inflation
+  zi_abundance_plot <- plot_zi_by_abundance(sim_variable)
+  print(zi_abundance_plot)
+  
+  # Compare zero-inflation patterns between groups
+  zi_group_plot <- compare_group_zi_patterns(sim_variable, plot_type = "scatter")
+  print(zi_group_plot)
+}
+
+# Calculate power using variable zero-inflation model
+variable_zi_power <- calc_zinb_bayesian_power(
+  n_samples = 30,              # 30 samples per group
+  effect_size = 2.0,           # 2-fold difference
+  n_viruses = 150,             # 150 viral taxa
+  structural_zeros = 0.7,      # Mean structural zero rate
+  sampling_zeros = 0.2,        # Sampling zero rate
+  variable_zi_rates = TRUE,    # Enable variable zero-inflation
+  zi_alpha = 2,                # Beta distribution shape parameter
+  zi_beta = 5,                 # Beta distribution shape parameter
+  n_sim = 10                   # 10 simulations for example
+)
+
+# Compare with uniform zero-inflation model
+uniform_zi_power <- calc_zinb_bayesian_power(
+  n_samples = 30,
+  effect_size = 2.0,
+  n_viruses = 150,
+  structural_zeros = 0.7,
+  sampling_zeros = 0.2,
+  variable_zi_rates = FALSE,   # Use uniform zero-inflation
+  n_sim = 10
+)
+
+# Print power comparison
+print(paste("Variable ZI power:", round(variable_zi_power$power * 100, 1), "%"))
+print(paste("Uniform ZI power:", round(uniform_zi_power$power * 100, 1), "%"))
+
+# Generate report with variable zero-inflation diagnostics
+var_zi_report <- generate_zero_inflated_power_report(
+  zinb_power_results = variable_zi_power,
+  output_file = "variable_zi_power_report.html",
+  title = "Variable Zero-Inflation Power Analysis"
+)
+```
+
 Zero-inflated Bayesian analysis provides several critical advantages for virome studies:
 - Distinguishes between true absence and failed detection
 - Accounts for differential viral prevalence between groups
+- Models taxon-specific zero-inflation rates for better biological realism
 - More accurate power estimates in extremely sparse datasets
 - Identifies detection limits vs. biological effects
 - Improves sensitivity for rare viral taxa discovery
 - Provides detection-adjusted effect size estimates
+
+The variable zero-inflation model offers these additional benefits:
+- Each viral taxon has its own structural zero rate
+- Reflects the biological reality that some viruses are genuinely rarer
+- Captures abundance-prevalence relationships
+- More accurate modeling of high taxonomic diversity
+- Better estimation of true viral community structure
 
 Using zero-inflated models is particularly important when:
 1. Virome data has >80% zeros
 2. Sequencing depth varies significantly between samples
 3. Viral communities have many low-abundance members
 4. Groups may differ in both abundance AND prevalence
+5. Different viral taxa have distinct prevalence patterns
 
 ## Citation
 
