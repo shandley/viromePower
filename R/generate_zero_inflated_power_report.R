@@ -876,8 +876,6 @@ When to use zero-inflated models:
     
     # Clean up temp file
     unlink(tmp_rmd_simple)
-  }, error = function(e) {
-    stop(paste0("Error rendering report: ", e$message))
   })
   
   # Clean up temp files
