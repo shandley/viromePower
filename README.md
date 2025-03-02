@@ -609,6 +609,31 @@ Using zero-inflated models is particularly important when:
 4. Groups may differ in both abundance AND prevalence
 5. Different viral taxa have distinct prevalence patterns
 
+## Interactive Zero-Inflation Explorer Dashboard
+
+viromePower includes an interactive Shiny dashboard for exploring zero-inflation patterns without writing code:
+
+```r
+# Launch the interactive Zero-Inflation Explorer dashboard
+run_zi_explorer()
+```
+
+This dashboard provides easy-to-use interfaces for:
+- Simulating and visualizing different zero-inflation patterns
+- Estimating parameters from real virome data
+- Comparing statistical power across different zero-inflation scenarios
+- Determining optimal study designs for various zero-inflation patterns
+- Statistically comparing fixed vs. variable zero-inflation models
+
+![Zero-Inflation Explorer Dashboard](https://github.com/username/viromePower/raw/main/man/figures/zi_explorer_dashboard.png)
+
+The dashboard is particularly useful for:
+- Teaching concepts of zero-inflation in virome data
+- Exploratory analysis of real datasets
+- Quick visualization of different modeling approaches
+- Interactive power analysis with real-time visualization
+- Communicating results to collaborators and stakeholders
+
 ## Citation
 
 If you use viromePower in your research, please cite:
