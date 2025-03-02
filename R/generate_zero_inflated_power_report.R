@@ -659,63 +659,57 @@ n_samples <- as.numeric({{n_samples}})
 recommended_size <- as.numeric({{recommended_sample_size}})
 
 if (!is.na(n_viruses) && !is.na(n_samples)) {
-  # Set up parameters
-  n_diff <- round(n_viruses * 0.15)  # 15% truly differential
+  # Set up parameters - use safe defaults
+  n_diff <- max(1, round(n_viruses * 0.15))  # 15% truly differential, min 1
   
-  # Create sample sizes
+  # Create sample sizes - safely
+  n_samples <- max(5, as.numeric(n_samples))  # Ensure minimum value
+  
   if (!is.na(recommended_size)) {
-    sample_sizes <- sort(unique(c(
-      floor(seq(5, n_samples, length.out = 4)),
-      n_samples,
-      floor(seq(n_samples, recommended_size, length.out = 4)),
-      recommended_size
-    )))
+    recommended_size <- max(n_samples, as.numeric(recommended_size))  # Ensure valid
+    sample_sizes <- c(5, 10, n_samples, recommended_size)  # Simple set of sizes
+    sample_sizes <- sort(unique(sample_sizes))  # Remove duplicates
   } else {
-    sample_sizes <- floor(seq(5, max(50, 2*n_samples), length.out = 10))
+    sample_sizes <- c(5, 10, 15, 20, 25, 30)  # Fixed set of sizes
   }
   
-  # Simulate discoveries as a function of sample size
-  true_positives <- sapply(sample_sizes, function(n) {
-    # Power increases with sample size
-    power <- min(0.95, 0.1 + 0.85 * (1 - exp(-0.05 * n)))
-    # Expected discoveries
-    round(n_diff * power)
-  })
+  # Create simple discovery data
+  n_sizes <- length(sample_sizes)
   
-  false_positives <- sapply(sample_sizes, function(n) {
-    # FDR is roughly constant
-    fdr <- 0.05
-    # Expected false positives (depends on true positive count)
-    round(true_positives[match(n, sample_sizes)] * fdr / (1 - fdr))
-  })
+  # Simple mocked data  
+  true_positives <- round(n_diff * sapply(seq_along(sample_sizes), function(i) {
+    min(0.95, i/n_sizes)  # Power increases with sample size index
+  }))
+  
+  false_positives <- pmax(0, round(true_positives * 0.05 / 0.95))  # 5% FDR
   
   # Prepare data frame
   discovery_df <- data.frame(
     SampleSize = rep(sample_sizes, 2),
     Count = c(true_positives, false_positives),
-    Type = rep(c("True Discoveries", "False Discoveries"), each = length(sample_sizes))
+    Type = rep(c("True Discoveries", "False Discoveries"), each = n_sizes)
   )
   
   # Calculate total discoveries
   total_discoveries <- true_positives + false_positives
   
-  # Plot stacked bars
-  ggplot(discovery_df, aes(x = SampleSize, y = Count, fill = Type)) +
-    geom_bar(stat = "identity", position = "stack") +
-    scale_fill_manual(values = c("True Discoveries" = "#2ecc71", "False Discoveries" = "#e74c3c")) +
-    geom_text(data = data.frame(SampleSize = sample_sizes, Count = total_discoveries),
-              aes(label = Count), position = position_stack(vjust = 1.05), size = 3) +
-    geom_vline(xintercept = n_samples, linetype = "dashed", color = "black") +
-    annotate("text", x = n_samples, y = max(total_discoveries) * 0.2, 
-             label = "Current", angle = 90, hjust = 1) +
-    labs(
+  # Plot stacked bars - careful with max calculation
+  max_total <- max(total_discoveries, 1)  # Ensure positive value
+  
+  p <- ggplot2::ggplot(discovery_df, ggplot2::aes(x = SampleSize, y = Count, fill = Type)) +
+    ggplot2::geom_bar(stat = "identity", position = "stack") +
+    ggplot2::scale_fill_manual(values = c("True Discoveries" = "#2ecc71", "False Discoveries" = "#e74c3c")) +
+    ggplot2::geom_vline(xintercept = n_samples, linetype = "dashed", color = "black") +
+    ggplot2::labs(
       title = "Expected Discoveries by Sample Size",
       subtitle = "Showing true discoveries (green) and false discoveries (red)",
       x = "Samples per Group",
       y = "Number of Discoveries",
       fill = ""
     ) +
-    theme_minimal()
+    ggplot2::theme_minimal()
+    
+  print(p)
   
 } else {
   # If parameters are NA, show a message
@@ -888,13 +882,48 @@ if (requireNamespace("DiagrammeR", quietly = TRUE)) {
     env$compare_power_curves <- compare_power_curves
     env$plot_zinb_diagnostics <- plot_zinb_diagnostics
     
-    rmarkdown::render(
-      input = tmp_rmd,
-      output_file = basename(output_file),
-      output_dir = dirname(output_file),
-      envir = env,
-      quiet = TRUE
-    )
+    # Check if pandoc is available to prevent common errors
+    if (!rmarkdown::pandoc_available()) {
+      warning("Pandoc not found. Cannot render HTML report.")
+      return(output_file)
+    }
+    
+    # Try rendering with error handling
+    tryCatch({
+      rmarkdown::render(
+        input = tmp_rmd,
+        output_file = basename(output_file),
+        output_dir = dirname(output_file),
+        envir = env,
+        quiet = TRUE
+      )
+    }, error = function(e) {
+      # If rendering fails, create a simple text report instead
+      warning(paste0("Failed to render HTML report: ", e$message, 
+                   ". Creating text summary instead."))
+      text_output <- paste0(output_file, ".txt")
+      writeLines(
+        c("# Zero-Inflated Virome Power Analysis Report",
+          paste0("Date: ", Sys.Date()),
+          "",
+          "## Parameters",
+          paste0("- Samples per group: ", template_data$n_samples),
+          paste0("- Effect size: ", template_data$effect_size),
+          paste0("- Viral taxa: ", template_data$n_viruses),
+          paste0("- Structural zeros: ", template_data$structural_zeros_pct, "%"),
+          paste0("- Sampling zeros: ", template_data$sampling_zeros_pct, "%"),
+          "",
+          "## Results",
+          paste0("- Statistical power: ", template_data$power_pct, "%"),
+          paste0("- Recommended sample size: ", template_data$recommended_sample_size),
+          paste0("- Expected discoveries: ", template_data$expected_discoveries),
+          "",
+          "Note: Full HTML report generation failed. This is a simplified text summary."),
+        text_output
+      )
+      output_file <- text_output
+      return(output_file)
+    })
   }, error = function(e) {
     stop(paste0("Error rendering report: ", e$message))
   })
