@@ -12,6 +12,9 @@ calc_zinb_bayesian_power(
   sampling_zeros = 0.2,
   dispersion = 1.5,
   zero_inflation_difference = TRUE,
+  variable_zi_rates = FALSE,
+  zi_alpha = 2,
+  zi_beta = 3,
   prior_strength = 2,
   credible_interval = 0.95,
   fold_change_threshold = 1.5,
@@ -37,6 +40,12 @@ calc_zinb_bayesian_power(
 \item{dispersion}{Dispersion parameter for negative binomial distribution (default: 1.5)}
 
 \item{zero_inflation_difference}{Whether the zero-inflation probability differs between groups (default: TRUE)}
+
+\item{variable_zi_rates}{Logical; whether to use varying zero inflation rates across viral taxa (default: FALSE)}
+
+\item{zi_alpha}{Shape parameter for beta distribution to generate variable structural zero rates (default: 2)}
+
+\item{zi_beta}{Shape parameter for beta distribution to generate variable structural zero rates (default: 3)}
 
 \item{prior_strength}{Prior strength (concentration) parameter (default: 2)}
 
@@ -77,7 +86,7 @@ The analysis accounts for both structural zeros (true absence) and sampling zero
 providing more accurate power estimates for datasets with extreme sparsity.
 }
 \examples{
-# Calculate zero-inflated Bayesian power for a virome study
+# Calculate standard zero-inflated Bayesian power for a virome study
 zinb_power <- calc_zinb_bayesian_power(
   n_samples = 30,           # 30 samples per group
   effect_size = 2.5,        # 2.5-fold difference between groups
@@ -89,5 +98,18 @@ zinb_power <- calc_zinb_bayesian_power(
 
 # Print the Bayesian power estimate
 print(paste("ZINB Bayesian power:", round(zinb_power$power * 100, 1), "\%"))
+
+# Calculate power with variable zero-inflation rates across taxa
+variable_zi_power <- calc_zinb_bayesian_power(
+  n_samples = 30,
+  effect_size = 2.5,
+  n_viruses = 200,
+  structural_zeros = 0.75,
+  sampling_zeros = 0.15,
+  variable_zi_rates = TRUE, # Enable taxon-specific zero-inflation
+  zi_alpha = 2,             # Beta distribution shape parameter
+  zi_beta = 5,              # Beta distribution shape parameter
+  n_sim = 20
+)
 
 }

@@ -12,7 +12,10 @@ simulate_zero_inflated_virome(
   dispersion = 1.5,
   effect_size = 2,
   zero_inflation_difference = TRUE,
-  groups = NULL
+  groups = NULL,
+  variable_zi_rates = FALSE,
+  zi_alpha = 2,
+  zi_beta = 3
 )
 }
 \arguments{
@@ -31,6 +34,12 @@ simulate_zero_inflated_virome(
 \item{zero_inflation_difference}{Whether the zero-inflation probability differs between groups (default: TRUE)}
 
 \item{groups}{Vector of group labels for samples (default: equal groups)}
+
+\item{variable_zi_rates}{Logical; whether to use varying zero inflation rates across viral taxa (default: FALSE)}
+
+\item{zi_alpha}{Shape parameter for beta distribution to generate variable structural zero rates (default: 2)}
+
+\item{zi_beta}{Shape parameter for beta distribution to generate variable structural zero rates (default: 3)}
 }
 \value{
 A list containing simulated count matrix and sample metadata, with additional
@@ -44,5 +53,15 @@ combines a point mass at zero with a negative binomial distribution, allowing fo
 modeling of structural zeros (true absence) and sampling zeros (detection failures).
 }
 \examples{
+# Basic zero-inflated simulation
 sim_data <- simulate_zero_inflated_virome(n_samples = 30, n_viruses = 100)
+
+# Simulation with varying zero-inflation rates across viral taxa
+sim_data_var <- simulate_zero_inflated_virome(
+  n_samples = 30, 
+  n_viruses = 100,
+  variable_zi_rates = TRUE,
+  zi_alpha = 2,
+  zi_beta = 5  # More right-skewed distribution of zi rates
+)
 }
