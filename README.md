@@ -479,6 +479,113 @@ var_zi_report <- generate_zero_inflated_power_report(
 )
 ```
 
+## Advanced Features for Variable Zero-Inflation Analysis
+
+viromePower includes several advanced tools for working with variable zero-inflation in real virome studies:
+
+```r
+# FEATURE 1: ESTIMATE ZERO-INFLATION PARAMETERS FROM REAL DATA
+# ---------------------------------------------------------
+# Let's say you have a real virome count matrix (rows=viruses, cols=samples)
+# We can estimate the best Beta distribution parameters to model the zero-inflation pattern
+
+zi_params <- estimate_zi_parameters_from_data(
+  count_matrix = my_virome_counts,         # Your virome count matrix
+  presence_threshold = 5,                  # Minimum count to consider present
+  method = "mle",                          # Maximum likelihood estimation
+  plot_fit = TRUE                          # Create visualization of the fit
+)
+
+# Estimated parameters can then be used in simulations and power analysis
+print(paste("Estimated alpha:", round(zi_params$alpha, 2)))
+print(paste("Estimated beta:", round(zi_params$beta, 2)))
+print(paste("Mean zero-inflation rate:", round(zi_params$mean_zi, 2)))
+
+# FEATURE 2: COMPARE POWER ACROSS DIFFERENT ZERO-INFLATION PATTERNS
+# ----------------------------------------------------------------
+# Evaluate how different zero-inflation patterns affect statistical power
+
+power_comparison <- plot_power_by_zi_pattern(
+  sample_sizes = c(20, 30, 40, 50),        # Sample sizes to evaluate
+  effect_sizes = c(1.5, 2.0, 2.5),         # Effect sizes to evaluate
+  zi_patterns = list(                       # Define ZI patterns to compare
+    right_skewed = c(alpha = 2, beta = 5),  # More taxa with lower ZI 
+    left_skewed = c(alpha = 5, beta = 2),   # More taxa with higher ZI
+    uniform = c(alpha = 1, beta = 1),       # Flat distribution
+    fixed = c(alpha = NA, beta = NA)        # Traditional fixed rate
+  ),
+  fixed_zi_rate = 0.7,                     # Mean ZI rate for all patterns
+  n_sim = 5                                # Use higher value (20+) for actual analysis
+)
+
+# Show comparison plot
+print(power_comparison$plots$combined)
+
+# FEATURE 3: COMPARE FIXED VS VARIABLE ZERO-INFLATION MODELS
+# --------------------------------------------------------
+# Determine which approach better fits your data
+
+model_comparison <- compare_zi_models(
+  count_matrix = my_virome_counts,         # Your virome count matrix
+  variable_zi_method = "beta",             # Method for modeling variable ZI
+  n_bootstrap = 100,                       # Bootstrap samples for confidence
+  visualize = TRUE                         # Create comparison plots
+)
+
+# See which model fits better
+print(paste("Better model:", model_comparison$best_model))
+print(paste("AIC difference:", round(model_comparison$aic_values$difference, 2)))
+print(paste("P-value:", format(model_comparison$lrt_p_value, digits = 4)))
+
+# Visualization showing model comparison
+print(model_comparison$plots$model_comparison)
+
+# FEATURE 4: OPTIMIZE SAMPLING STRATEGY
+# -----------------------------------
+# Find optimal sample size and sequencing depth for a given ZI pattern
+
+sampling_strategy <- optimize_sampling_strategy(
+  target_power = 0.85,                     # Target statistical power
+  effect_size = 2.0,                       # Expected effect size
+  zi_alpha = zi_params$alpha,              # Use estimated alpha
+  zi_beta = zi_params$beta,                # Use estimated beta
+  total_sequencing_effort = 100,           # Total sequencing capacity (million reads)
+  test_variable_zi = TRUE                  # Compare fixed vs variable ZI approaches
+)
+
+# Print recommendation
+cat(sampling_strategy$recommendation)
+
+# Plot showing power by sample size and depth
+print(sampling_strategy$plots$contour_variable)
+
+# FEATURE 5: EXPORT SIMULATED DATA FOR EXTERNAL ANALYSIS
+# ----------------------------------------------------
+# Export data to common formats for use with external tools
+
+sim_data <- simulate_zero_inflated_virome(
+  n_samples = 40,
+  n_viruses = 200,
+  variable_zi_rates = TRUE,
+  zi_alpha = zi_params$alpha,
+  zi_beta = zi_params$beta
+)
+
+export_results <- export_zinb_simulation(
+  sim_data = sim_data,
+  formats = c("csv", "biom", "phyloseq"),  # Formats to export
+  output_dir = "virome_simulation",        # Directory for output files
+  base_filename = "variable_zi_data",      # Base name for files
+  include_zi_parameters = TRUE,            # Include ZI info in metadata
+  normalize = TRUE,                        # Export normalized counts
+  normalization_method = "CPM"             # Counts per million normalization
+)
+
+# Summary of exported files
+print(paste("Exported", length(export_results$exported_files), "files"))
+print(paste("Formats:", paste(export_results$summary$formats_exported, collapse = ", ")))
+```
+
 Zero-inflated Bayesian analysis provides several critical advantages for virome studies:
 - Distinguishes between true absence and failed detection
 - Accounts for differential viral prevalence between groups
