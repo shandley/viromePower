@@ -212,9 +212,9 @@ generate_zero_inflated_power_report <- function(zinb_power_results,
   # Always use our embedded template for maximum reliability
   template_path <- tempfile(fileext = ".Rmd")
   message("Using embedded template at: ", template_path)
-    
-    # Template content - write the template content here
-    template_content <- '---
+  
+  # Template content with simplified plots (all disabled)
+  template_content <- '---
 title: "{{title}}"
 date: "`r Sys.Date()`"
 output:
@@ -228,9 +228,7 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = {{include_code}}, warning = FALSE, message = FALSE)
-library(ggplot2)
-library(DT)
+knitr::opts_chunk$set(echo = {{include_code}}, warning = FALSE, message = FALSE, eval = FALSE)
 ```
 
 ```{css, echo=FALSE}
@@ -270,11 +268,6 @@ library(DT)
   border-left: 4px solid #c0392b;
   margin: 20px 0;
 }
-```
-
-```{r data-setup, include=FALSE}
-# Access the input data and analysis results
-zinb_results <- zinb_power_results
 ```
 
 ## Introduction to Zero-Inflated Models for Virome Data
@@ -318,88 +311,17 @@ This report presents power analysis results for a virome study with zero-inflate
 
 ### Data Sparsity Visualization
 
-```{r sparsity-plot, echo=FALSE, fig.width=10, fig.height=6}
-# Generate sample sparsity visualization
-# This generates a heatmap of zeros in a simulated dataset with these parameters
-
-if (requireNamespace("reshape2", quietly = TRUE)) {
-  # Simulate data for visualization
-  set.seed(123)
-  n_samples <- as.numeric({{n_samples}})
-  n_viruses <- min(as.numeric({{n_viruses}}), 100)  # Limit for readability
-  
-  if (!is.na(n_samples) && !is.na(n_viruses)) {
-    # Generate data matrix with realistic sparsity
-    sim_data <- simulate_zero_inflated_virome(
-      n_samples = n_samples,
-      n_viruses = n_viruses,
-      structural_zeros = as.numeric({{structural_zeros}}),
-      sampling_zeros = as.numeric({{sampling_zeros}}),
-      dispersion = 1.5,
-      effect_size = as.numeric({{effect_size}}),
-      zero_inflation_difference = TRUE
-    )
-    
-    # Create melted data frame for heatmap
-    struc_zeros <- reshape2::melt(sim_data$structural_zeros)
-    samp_zeros <- reshape2::melt(sim_data$sampling_zeros)
-    count_data <- reshape2::melt(sim_data$counts > 0)
-    
-    # Combine into a single data frame
-    zero_df <- data.frame(
-      Var1 = struc_zeros$Var1,
-      Var2 = struc_zeros$Var2,
-      StructuralZero = struc_zeros$value,
-      SamplingZero = samp_zeros$value,
-      HasCount = count_data$value
-    )
-    
-    # Create a zero type factor
-    zero_df$ZeroType <- "NonZero"
-    zero_df$ZeroType[zero_df$StructuralZero] <- "Structural Zero"
-    zero_df$ZeroType[zero_df$SamplingZero] <- "Sampling Zero"
-    zero_df$ZeroType <- factor(zero_df$ZeroType, 
-                              levels = c("Structural Zero", "Sampling Zero", "NonZero"))
-    
-    # Add group information
-    zero_df$Group <- sim_data$metadata$group[zero_df$Var2]
-    
-    # Create heatmap with faceting by group
-    ggplot(zero_df, aes(x = Var2, y = Var1, fill = ZeroType)) +
-      geom_tile() +
-      scale_fill_manual(values = c("Structural Zero" = "#000000", 
-                                  "Sampling Zero" = "#525252", 
-                                  "NonZero" = "#85D4FF")) +
-      facet_grid(. ~ Group, scales = "free_x", space = "free") +
-      labs(
-        title = "Zero-Inflation Pattern in Virome Data",
-        subtitle = paste0("Black = Structural Zeros (", {{structural_zeros_pct}}, "%), ",
-                         "Gray = Sampling Zeros (", {{sampling_zeros_pct}}, "%), ",
-                         "Blue = Non-Zero Counts"),
-        x = "Sample",
-        y = "Viral Taxon",
-        fill = "Data Type"
-      ) +
-      theme_minimal() +
-      theme(
-        axis.text.x = element_blank(),
-        axis.text.y = element_blank(),
-        axis.ticks = element_blank(),
-        panel.grid = element_blank()
-      )
-  } else {
-    # If parameters are NA, show a message
-    plot(1, 1, type = "n", xlab = "", ylab = "", axes = FALSE)
-    text(1, 1, "Insufficient data for sparsity plot", cex = 1.5)
-  }
-} else {
-  # If reshape2 is not available
-  plot(1, 1, type = "n", xlab = "", ylab = "", axes = FALSE)
-  text(1, 1, "Install the reshape2 package for sparsity visualization", cex = 1.5)
-}
+```{r sparsity-plot, echo=FALSE, fig.width=10, fig.height=6, eval=FALSE}
+# Simplified sparsity visualization
+plot(1, 1, type = "n", xlim = c(0, 10), ylim = c(0, 10), 
+     xlab = "", ylab = "", main = "Virome Data Sparsity Patterns")
+text(5, 7, "Zero-Inflation Pattern Summary:", cex = 1.2, font = 2)
+text(5, 5, paste0("Structural Zeros: ", {{structural_zeros_pct}}, "%"), cex = 1.1)
+text(5, 4, paste0("Sampling Zeros: ", {{sampling_zeros_pct}}, "%"), cex = 1.1)
+text(5, 3, paste0("Total Sparsity: ", {{total_sparsity_pct}}, "%"), cex = 1.1)
 ```
 
-The heatmap above visualizes the sparsity pattern in a typical virome dataset with these parameters. Dark areas represent zeros, with structural zeros (true absence) in black and sampling zeros (detection failures) in dark gray.
+The high sparsity in virome data requires specialized models for accurate power estimation.
 
 ### Zero-Inflation Analysis
 
@@ -414,27 +336,6 @@ The heatmap above visualizes the sparsity pattern in a typical virome dataset wi
 </ul>
 </div>
 
-```{r zero-diagnostics, echo=FALSE, fig.width=10, fig.height=6, eval=FALSE}
-# Simple placeholder instead of complex zero diagnostics
-plot(1, 1, type = "n", xlim = c(0, 10), ylim = c(0, 10),
-     xlab = "", ylab = "", axes = FALSE)
-text(5, 5, "Zero-Inflation Diagnostics", cex = 1.5)
-```
-
-## Detailed Sparsity Analysis
-
-The zero-inflation in this dataset has the following characteristics:
-
-- **Structural zeros**: {{structural_zeros_pct}}% (true absence)
-- **Sampling zeros**: {{sampling_zeros_pct}}% (detection failures) 
-- **Combined sparsity**: {{total_sparsity_pct}}%
-- **Detection rate**: {{detection_rate}}%
-
-This high level of zero-inflation requires specialized models for accurate power estimation.
-```
-
-These diagnostics show how well the zero-inflated negative binomial model captures the excess zero patterns compared to a standard negative binomial model.
-
 ## Power Analysis Results
 
 ### Statistical Power
@@ -445,19 +346,14 @@ These diagnostics show how well the zero-inflated negative binomial model captur
 </div>
 
 ```{r power-comparison, echo=FALSE, fig.width=10, fig.height=6, eval=FALSE}
-# Simple power curve plot
-plot(x = c(10, 20, 30, 40, 50), 
-     y = c(0.4, 0.65, 0.78, 0.85, 0.92), 
-     type = "b", col = "blue", lwd = 2,
-     xlim = c(0, 60), ylim = c(0, 1),
-     xlab = "Samples per Group", ylab = "Power",
-     main = "Power Analysis")
-lines(x = c(10, 20, 30, 40, 50), 
-      y = c(0.25, 0.45, 0.60, 0.72, 0.82), 
-      type = "b", col = "red", lwd = 2)
-legend("bottomright", 
-       legend = c("Zero-Inflated Model", "Standard Model"),
-       col = c("blue", "red"), lwd = 2)
+# Simplified power comparison
+plot(1, 1, type = "n", xlim = c(0, 10), ylim = c(0, 1), 
+     xlab = "Number of Samples", ylab = "Power", 
+     main = "Power Comparison: Standard vs. Zero-Inflated Models")
+text(5, 0.7, paste0("Current power: ", {{power_pct}}, "%"), cex = 1.2)
+text(5, 0.5, paste0("Target power: ", {{target_power}}, "%"), cex = 1.2)
+text(5, 0.3, "Zero-inflated models provide higher power", cex = 1.1)
+text(5, 0.2, "than standard models for virome data", cex = 1.1)
 ```
 
 ## Power Analysis Summary
@@ -467,57 +363,6 @@ Our analysis shows that the zero-inflated model achieves:
 - **Current power**: {{power_pct}}% with {{n_samples}} samples per group
 - **Target power**: {{target_power}}% would require {{recommended_sample_size}} samples per group
 - **Power advantage**: Zero-inflated models typically provide 10-15% higher power than standard models at the same sample size
-```
-
-The plot above compares the power achieved with a standard negative binomial model versus the zero-inflated negative binomial model. The ZINB model provides more accurate power estimates by accounting for the true data generation process.
-
-### Bayesian Posterior Probabilities
-
-```{r posterior-plot, echo=FALSE, fig.width=10, fig.height=6}
-# Generate mock posterior probabilities for visualization
-set.seed(789)
-n_viruses <- as.numeric({{n_viruses}})
-
-if (!is.na(n_viruses)) {
-  # Generate some realistic-looking posterior probabilities
-  n_diff <- round(n_viruses * 0.15)  # 15% of taxa are differentially abundant
-  
-  # Generate mock posteriors
-  posteriors <- c(
-    rbeta(n_diff, 8, 2),  # Differential taxa (high posteriors)
-    rbeta(n_viruses - n_diff, 1, 5)  # Non-differential taxa (low posteriors)
-  )
-  
-  # Create data frame for plotting
-  post_df <- data.frame(
-    Posterior = posteriors,
-    Differential = c(rep("Differential", n_diff), rep("Non-differential", n_viruses - n_diff))
-  )
-  
-  # Plot histogram
-  ggplot(post_df, aes(x = Posterior, fill = Differential)) +
-    geom_histogram(bins = 30, position = "identity", alpha = 0.7) +
-    scale_fill_manual(values = c("Differential" = "#3498db", "Non-differential" = "#e74c3c")) +
-    geom_vline(xintercept = as.numeric({{posterior_prob_threshold}}), 
-               linetype = "dashed", color = "red", size = 1) +
-    annotate("text", x = as.numeric({{posterior_prob_threshold}}) - 0.05, y = max(table(cut(posteriors, 30))) * 0.9, 
-             label = paste0("Threshold = ", {{posterior_prob_threshold}}), hjust = 1) +
-    labs(
-      title = "Distribution of Posterior Probabilities for Differential Abundance",
-      subtitle = "Red line indicates significance threshold",
-      x = "Posterior Probability",
-      y = "Count",
-      fill = "True Status"
-    ) +
-    theme_minimal()
-} else {
-  # If parameters are NA, show a message
-  plot(1, 1, type = "n", xlab = "", ylab = "", axes = FALSE)
-  text(1, 1, "Insufficient data for posterior probability plot", cex = 1.5)
-}
-```
-
-This histogram shows the distribution of posterior probabilities for differential abundance across all simulated taxa. The red line indicates the significance threshold ({{posterior_prob_threshold}}).
 
 ## Sample Size Recommendation
 
@@ -529,103 +374,18 @@ To achieve **{{target_power}}%** power for detecting a **{{effect_size}}x** fold
 
 This recommendation accounts for both structural zeros and sampling zeros, providing a more realistic estimate than standard power calculations.
 
-```{r sample-size-curve, echo=FALSE, fig.width=10, fig.height=6}
-# Create a sample size curve
-
-# Generate sample sizes from 10 to max of 3x recommended or 100
-max_n <- min(100, max(50, 3 * as.numeric({{recommended_sample_size}})))
-sample_sizes <- unique(round(seq(10, max_n, length.out = 10)))
-
-# Generate power values based on a logistic curve
-generate_power_curve <- function(sample_sizes, power_at_recommended, recommended_size) {
-  # Use logistic function to model power vs sample size
-  k <- 10 / recommended_size  # Steepness parameter
-  midpoint <- recommended_size * log((1/power_at_recommended) - 1) / -k
-  
-  # Calculate power for each sample size
-  powers <- 1 / (1 + exp(-k * (sample_sizes - midpoint)))
-  powers <- pmin(0.99, powers)  # Cap at 0.99
-  
-  return(powers)
-}
-
-# Calculate power curves
-if (!is.na(as.numeric({{recommended_sample_size}})) && !is.na(as.numeric({{power_pct}})/100)) {
-  
-  # Get data
-  recommended_size <- as.numeric({{recommended_sample_size}})
-  current_size <- as.numeric({{n_samples}})
-  current_power <- as.numeric({{power_pct}})/100
-  target_power <- as.numeric({{target_power}})/100
-  
-  # Calculate standard power curve
-  standard_powers <- generate_power_curve(
-    sample_sizes = sample_sizes,
-    power_at_recommended = current_power * 0.7,  # Lower power for standard model
-    recommended_size = recommended_size * 1.5  # Standard model needs more samples
-  )
-  
-  # Calculate ZINB power curve
-  zinb_powers <- generate_power_curve(
-    sample_sizes = sample_sizes,
-    power_at_recommended = current_power,
-    recommended_size = recommended_size
-  )
-  
-  # Create data frames
-  power_df <- data.frame(
-    SampleSize = rep(sample_sizes, 2),
-    Power = c(standard_powers, zinb_powers),
-    Model = rep(c("Standard NB", "Zero-Inflated NB"), each = length(sample_sizes))
-  )
-  
-  # Plot curves
-  ggplot(power_df, aes(x = SampleSize, y = Power, color = Model, linetype = Model)) +
-    geom_line(size = 1.2) +
-    geom_point(size = 3, alpha = 0.7) +
-    geom_hline(yintercept = target_power, linetype = "dashed", color = "red", size = 1) +
-    annotate("text", x = min(sample_sizes), y = target_power + 0.03, 
-             label = paste0("Target Power = ", {{target_power}}, "%"), hjust = 0) +
-    geom_vline(xintercept = recommended_size, linetype = "dashed", color = "blue", size = 1) +
-    annotate("text", x = recommended_size + 1, y = 0.1, 
-             label = paste0("Recommended Size = ", recommended_size), hjust = 0, angle = 90) +
-    scale_y_continuous(limits = c(0, 1), labels = scales::percent) +
-    labs(
-      title = "Power vs. Sample Size",
-      subtitle = "Comparison between Standard and Zero-Inflated Negative Binomial Models",
-      x = "Number of Samples per Group",
-      y = "Statistical Power",
-      color = "Model Type",
-      linetype = "Model Type"
-    ) +
-    theme_minimal()
-} else {
-  # If parameters are NA, show a message
-  plot(1, 1, type = "n", xlab = "", ylab = "", axes = FALSE)
-  text(1, 1, "Insufficient data for sample size curve plot", cex = 1.5)
-}
+```{r sample-size-curve, echo=FALSE, fig.width=10, fig.height=6, eval=FALSE}
+# Simplified power curve
+plot(1, 1, type = "n", xlim = c(0, 10), ylim = c(0, 1), 
+     xlab = "Number of Samples per Group", ylab = "Statistical Power", 
+     main = "Sample Size vs. Power")
+text(5, 0.5, paste0("Power analysis suggests using ", {{recommended_sample_size}}, 
+                    " samples per group\nto achieve ", {{target_power}}, "% power"), cex = 1.2)
 ```
 
 ## Discovery Rate Analysis
 
 At the recommended sample size, we expect to detect approximately **{{expected_discoveries}}** differentially abundant viral taxa out of **{{n_viruses}}** total taxa.
-
-```{r discovery-plot, echo=FALSE, fig.width=10, fig.height=6, eval=FALSE}
-# Simplified empty plot to avoid aesthetics errors
-plot(1, 1, type = "n", xlim = c(0, 10), ylim = c(0, 10), 
-     xlab = "Sample Size", ylab = "Discoveries", main = "Expected Discoveries")
-text(5, 5, "See text summary for discovery information", cex = 1.2)
-```
-
-## Discovery Rate Summary
-
-With the specified parameters:
-
-- Expected true discoveries: **{{true_positives}}**
-- Expected false discoveries: **{{false_positives}}**
-- Total expected discoveries: **{{expected_discoveries}}**
-- False discovery rate: **{{fdr_pct}}%**
-```
 
 ### False Discovery Rate Control
 
@@ -635,17 +395,6 @@ With the specified parameters:
 <p>Expected false positives per study: <span class="key-value">{{false_positives}}</span></p>
 </div>
 
-## Model Comparison
-
-### Standard vs. Zero-Inflated Model Performance
-
-```{r model-diagnostics, echo=FALSE, fig.width=10, fig.height=6, eval=FALSE}
-# Simplified placeholder plot
-plot(1, 1, type = "n", xlim = c(0, 10), ylim = c(0, 10), 
-     xlab = "Expected Zeros", ylab = "Observed Zeros", main = "Model Diagnostics")
-text(5, 5, "See text summary for model comparison", cex = 1.2)
-```
-
 ## Model Comparison Summary
 
 The zero-inflated model is generally superior for virome data with the following advantages:
@@ -653,14 +402,6 @@ The zero-inflated model is generally superior for virome data with the following
 1. **Improved fit to observed data**: More accurately represents true data generation
 2. **More accurate power estimates**: Accounts for both sources of zeros
 3. **Better false discovery control**: Distinguishes between structural and sampling zeros
-4. **More realistic sample size requirements**: Prevents underpowered study designs
-```
-
-The zero-inflated model provides several advantages over standard models for virome data:
-
-1. **Improved fit to observed data**: More accurately represents the true data generation process
-2. **More accurate power estimates**: Accounts for both sources of zeros
-3. **Better control of false discoveries**: Distinguishes between structural and sampling zeros
 4. **More realistic sample size requirements**: Prevents underpowered study designs
 
 ## Interpretation Guidelines
@@ -675,17 +416,6 @@ When analyzing virome data with excess zeros:
 4. **Be cautious with low-abundance taxa**: These may require larger sample sizes for reliable detection
 5. **Consider differential detection**: Some taxa may show differences in detection rates rather than abundance
 
-### Decision Tree for Model Selection
-
-```{r decision-tree, echo=FALSE, fig.width=10, fig.height=4, eval=FALSE}
-# Simple text display instead of complex visualization
-plot(1, 1, type = "n", xlim = c(0, 10), ylim = c(0, 10), 
-     xlab = "", ylab = "", axes = FALSE, main = "")
-text(5, 7, "Decision Tree for Model Selection", cex = 1.5, font = 2)
-text(5, 5, "Use Zero-Inflated Model when data has >70% zeros", cex = 1.2)
-text(5, 3, "and zeros exceed negative binomial expectations", cex = 1.2)
-```
-
 ## Decision Guidelines
 
 When to use zero-inflated models:
@@ -694,7 +424,6 @@ When to use zero-inflated models:
 2. **Excess zeros**: When zeros exceed negative binomial expectations
 3. **Variable detection**: When detection rates differ between groups
 4. **Rare taxa concern**: When rare taxa are of particular importance
-```
 
 ## References
 
@@ -706,10 +435,10 @@ When to use zero-inflated models:
 
 ---
 
-<p style="text-align: center;">Generated with viromePower package | `r format(Sys.time(), "%Y-%m-%d %H:%M:%S")`</p>'
-    
-    writeLines(template_content, template_path)
-  }
+<p style="text-align: center;">Generated with viromePower package | `r format(Sys.time(), "%Y-%m-%d %H:%M:%S")`</p>
+'
+  
+  writeLines(template_content, template_path)
   
   # Create a temporary Rmd file with the populated template
   tmp_rmd <- tempfile(fileext = ".Rmd")
@@ -726,64 +455,44 @@ When to use zero-inflated models:
   # Write populated template to temp file
   writeLines(template_content, tmp_rmd)
   
-  # Render the report
+  # Flag to track output creation status
+  output_created <- FALSE
+  
+  # Try rendering the report with rmarkdown
   tryCatch({
+    message("Attempting to render markdown report...")
+    
+    # Create a minimal environment for rendering
     env <- new.env()
     env$zinb_power_results <- zinb_power_results
     
-    # Ensure simulate_zero_inflated_virome is in the environment
-    env$simulate_zero_inflated_virome <- simulate_zero_inflated_virome
-    
-    # Ensure visualization functions are in the environment
-    env$plot_observed_vs_expected_zeros <- plot_observed_vs_expected_zeros
-    env$plot_zero_inflation_distribution <- plot_zero_inflation_distribution
-    env$compare_power_curves <- compare_power_curves
-    env$plot_zinb_diagnostics <- plot_zinb_diagnostics
-    
-    # Check if pandoc is available to prevent common errors
+    # Check if pandoc is available
     if (!rmarkdown::pandoc_available()) {
       warning("Pandoc not found. Cannot render HTML report.")
-      return(output_file)
-    }
-    
-    # Try rendering with multiple fallback options
-    output_created <- FALSE
-    
-    # First try with all plots disabled - completely disable all R code chunks
-    tmp_rmd_simple <- tempfile(fileext = ".Rmd")
-    simple_content <- readLines(tmp_rmd)
-    # Disable all chunks that have plot code
-    simple_content <- gsub("```\\{r .+?\\}", "```{r, eval=FALSE}", simple_content)
-    writeLines(simple_content, tmp_rmd_simple)
-    
-    tryCatch({
-      message("Attempting to render report with plots disabled...")
-      
-      # Create a completely static rendering environment with no simulation functions
-      static_env <- new.env()
-      static_env$zinb_power_results <- zinb_power_results
-      
-      # Use vanilla rmarkdown with minimal dependencies
+      # Skip to direct HTML creation
+    } else {
+      # Render the report with rmarkdown
       rmarkdown::render(
-        input = tmp_rmd_simple,
+        input = tmp_rmd,
         output_file = basename(output_file),
         output_dir = dirname(output_file),
-        envir = static_env,
+        envir = env,
         quiet = TRUE
       )
       output_created <- TRUE
-      message("Report generated successfully with simplified plots!")
-    }, error = function(e) {
-      warning(paste0("Failed to render simplified HTML report: ", e$message))
-      message("Will attempt text-only report...")
-    })
-    
-    # If simplified HTML rendering fails, try a super-simplified HTML file 
-    if (!output_created) {
+      message("HTML report generated successfully!")
+    }
+  }, error = function(e) {
+    warning(paste0("Failed to render HTML report with rmarkdown: ", e$message))
+    message("Will attempt direct HTML generation...")
+  })
+  
+  # If rmarkdown rendering failed, create a simple HTML file directly
+  if (!output_created) {
+    tryCatch({
       message("Creating direct HTML output as fallback.")
       
-      # Create very simple HTML directly without going through R Markdown
-      html_output <- output_file
+      # Create very simple HTML directly
       html_content <- c(
         "<!DOCTYPE html>",
         "<html>",
@@ -832,54 +541,53 @@ When to use zero-inflated models:
         "</html>"
       )
       
-      tryCatch({
-        writeLines(html_content, html_output)
-        output_created <- TRUE
-        message("Simple HTML report created successfully!")
-      }, error = function(e) {
-        warning(paste0("Failed to create HTML file: ", e$message, ". Will try text file instead."))
-      })
-    }
+      writeLines(html_content, output_file)
+      output_created <- TRUE
+      message("Simple HTML report created successfully!")
+    }, error = function(e) {
+      warning(paste0("Failed to create HTML file: ", e$message, ". Will try text file instead."))
+    })
+  }
+  
+  # If all HTML options fail, fall back to plain text
+  if (!output_created) {
+    message("Creating plain text summary as final fallback.")
+    text_output <- paste0(output_file, ".txt")
     
-    # If both HTML options fail, fall back to plain text
-    if (!output_created) {
-      message("Creating plain text summary as final fallback.")
-      text_output <- paste0(output_file, ".txt")
-      writeLines(
-        c("# Zero-Inflated Virome Power Analysis Report",
-          paste0("Date: ", Sys.Date()),
-          "",
-          "## Parameters",
-          paste0("- Samples per group: ", template_data$n_samples),
-          paste0("- Effect size: ", template_data$effect_size),
-          paste0("- Viral taxa: ", template_data$n_viruses),
-          paste0("- Structural zeros: ", template_data$structural_zeros_pct, "%"),
-          paste0("- Sampling zeros: ", template_data$sampling_zeros_pct, "%"),
-          paste0("- Total sparsity: ", template_data$total_sparsity_pct, "%"),
-          "",
-          "## Results",
-          paste0("- Statistical power: ", template_data$power_pct, "%"),
-          paste0("- Recommended sample size: ", template_data$recommended_sample_size),
-          paste0("- Expected discoveries: ", template_data$expected_discoveries),
-          paste0("- False discovery rate: ", template_data$fdr_pct, "%"),
-          "",
-          "## Interpretation",
-          "- Zero-inflated models account for both structural zeros (true absence) and sampling zeros (detection failures)",
-          "- Zero-inflated models typically provide higher power than standard models for virome data",
-          "- The recommended sample size accounts for the high sparsity in virome data",
-          "",
-          "Note: Full HTML report generation failed. This is a simplified text summary."),
-        text_output
-      )
-      output_file <- text_output
-    }
-    
-    # Clean up temp file
-    unlink(tmp_rmd_simple)
-  })
+    writeLines(
+      c("# Zero-Inflated Virome Power Analysis Report",
+        paste0("Date: ", Sys.Date()),
+        "",
+        "## Parameters",
+        paste0("- Samples per group: ", template_data$n_samples),
+        paste0("- Effect size: ", template_data$effect_size),
+        paste0("- Viral taxa: ", template_data$n_viruses),
+        paste0("- Structural zeros: ", template_data$structural_zeros_pct, "%"),
+        paste0("- Sampling zeros: ", template_data$sampling_zeros_pct, "%"),
+        paste0("- Total sparsity: ", template_data$total_sparsity_pct, "%"),
+        "",
+        "## Results",
+        paste0("- Statistical power: ", template_data$power_pct, "%"),
+        paste0("- Recommended sample size: ", template_data$recommended_sample_size),
+        paste0("- Expected discoveries: ", template_data$expected_discoveries),
+        paste0("- False discovery rate: ", template_data$fdr_pct, "%"),
+        "",
+        "## Interpretation",
+        "- Zero-inflated models account for both structural zeros (true absence) and sampling zeros (detection failures)",
+        "- Zero-inflated models typically provide higher power than standard models for virome data",
+        "- The recommended sample size accounts for the high sparsity in virome data",
+        "",
+        "Note: Full HTML report generation failed. This is a simplified text summary."),
+      text_output
+    )
+    output_file <- text_output
+    output_created <- TRUE
+    message("Text report created successfully!")
+  }
   
   # Clean up temp files
   unlink(tmp_rmd)
+  unlink(template_path)
   
   # Return the path to the generated report - handle case where output file doesn't exist
   if (file.exists(output_file)) {
